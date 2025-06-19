@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multipath Doppler Simulator</title>
+    <title>Multipath & Doppler Simulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,43 +24,23 @@
             border: 1px solid #4a5568;
         }
         input[type="range"] {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100%;
-            height: 8px;
-            background: #4a5568; /* gray-600 */
-            border-radius: 5px;
-            outline: none;
-            opacity: 0.7;
-            transition: opacity .2s;
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 8px; background: #4a5568; border-radius: 5px;
+            outline: none; opacity: 0.7; transition: opacity .2s;
         }
-        input[type="range"]:hover {
-            opacity: 1;
-        }
+        input[type="range"]:hover { opacity: 1; }
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            background: #6366f1; /* indigo-500 */
-            cursor: pointer;
-            border-radius: 50%;
+            -webkit-appearance: none; appearance: none;
+            width: 20px; height: 20px; background: #6366f1;
+            cursor: pointer; border-radius: 50%;
         }
         input[type="range"]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            background: #6366f1; /* indigo-500 */
-            cursor: pointer;
-            border-radius: 50%;
+            width: 20px; height: 20px; background: #6366f1;
+            cursor: pointer; border-radius: 50%;
         }
-        /* Style for number inputs */
-        input[type="number"] {
-            -moz-appearance: textfield;
-        }
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
+        input[type="number"] { -moz-appearance: textfield; }
+        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none; margin: 0;
         }
     </style>
 </head>
@@ -69,7 +49,7 @@
     <div class="w-full max-w-7xl mx-auto">
         <header class="text-center mb-6">
             <h1 class="text-4xl font-bold text-indigo-400">Multipath & Doppler Simulator</h1>
-            <p class="text-lg text-gray-400 mt-2">Visualize how Doppler shifts and phase differences create signal fading.</p>
+            <p class="text-lg text-gray-400 mt-2">Add or remove paths to see how they affect the received signal.</p>
         </header>
 
         <!-- Main Grid -->
@@ -78,91 +58,55 @@
             <!-- Controls Column -->
             <div class="lg:col-span-1 flex flex-col gap-6">
                 <div class="control-panel">
-                    <h2 class="text-2xl font-semibold mb-4 text-center">Controls</h2>
+                    <h2 class="text-2xl font-semibold mb-4 text-center">Global Controls</h2>
+                     <div class="mb-6 p-4 border border-gray-600 rounded-lg">
+                        <label for="carrierFreq" class="block mb-1 text-sm">Carrier Frequency Factor</label>
+                        <div class="flex items-center gap-2">
+                            <input type="range" class="flex-grow" id="carrierFreq" min="0" max="50" value="10" step="1">
+                            <input type="number" id="carrierFreqInput" min="0" max="50" step="1" value="10" class="w-20 bg-gray-700 rounded p-1 text-center font-mono text-sm">
+                        </div>
+                    </div>
                     
-                    <!-- Path 1 Controls -->
-                    <div class="mb-6 p-4 border border-blue-500 rounded-lg">
-                        <h3 class="text-lg font-medium text-blue-400 mb-3">Path 1 (Blue)</h3>
-                        <div class="mb-3">
-                            <label for="doppler1" class="block mb-1 text-sm">Doppler Shift</label>
-                            <div class="flex items-center gap-2">
-                                <input type="range" class="flex-grow" id="doppler1" min="-10" max="10" value="1" step="0.1">
-                                <input type="number" id="doppler1Input" min="-10" max="10" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center font-mono text-sm">
-                                <span class="w-6 text-left text-sm text-gray-400">Hz</span>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="amp1" class="block mb-1 text-sm">Amplitude</label>
-                            <div class="flex items-center gap-2">
-                                <input type="range" class="flex-grow" id="amp1" min="0" max="1" value="0.8" step="0.05">
-                                <input type="number" id="amp1Input" min="0" max="1" step="0.05" class="w-20 bg-gray-700 rounded p-1 text-center font-mono text-sm">
-                            </div>
-                        </div>
-                        <div>
-                            <label for="phase1" class="block mb-1 text-sm">Phase Shift</label>
-                            <div class="flex items-center gap-2">
-                                <input type="range" class="flex-grow" id="phase1" min="-180" max="180" value="0" step="1">
-                                <input type="number" id="phase1Input" min="-180" max="180" step="1" class="w-20 bg-gray-700 rounded p-1 text-center font-mono text-sm">
-                                <span class="w-6 text-left text-sm text-gray-400">deg</span>
-                            </div>
+                    <!-- Plot Visibility Toggles -->
+                    <div class="mb-6 p-4 border border-gray-600 rounded-lg">
+                        <h3 class="text-lg font-medium text-center mb-3">Plot Visibility</h3>
+                        <div id="plot-toggles-container" class="space-y-2">
+                            <!-- Toggles inserted by JS -->
                         </div>
                     </div>
 
-                    <!-- Path 2 Controls -->
-                    <div class="mb-6 p-4 border border-green-500 rounded-lg">
-                        <h3 class="text-lg font-medium text-green-400 mb-3">Path 2 (Green)</h3>
-                        <div class="mb-3">
-                            <label for="doppler2" class="block mb-1 text-sm">Doppler Shift</label>
-                            <div class="flex items-center gap-2">
-                                <input type="range" class="flex-grow" id="doppler2" min="-10" max="10" value="-0.5" step="0.1">
-                                <input type="number" id="doppler2Input" min="-10" max="10" step="0.1" class="w-20 bg-gray-700 rounded p-1 text-center font-mono text-sm">
-                                <span class="w-6 text-left text-sm text-gray-400">Hz</span>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="amp2" class="block mb-1 text-sm">Amplitude</label>
-                             <div class="flex items-center gap-2">
-                                <input type="range" class="flex-grow" id="amp2" min="0" max="1" value="0.7" step="0.05">
-                                <input type="number" id="amp2Input" min="0" max="1" step="0.05" class="w-20 bg-gray-700 rounded p-1 text-center font-mono text-sm">
-                            </div>
-                        </div>
-                        <div>
-                            <label for="phase2" class="block mb-1 text-sm">Phase Shift</label>
-                            <div class="flex items-center gap-2">
-                                <input type="range" class="flex-grow" id="phase2" min="-180" max="180" value="0" step="1">
-                                <input type="number" id="phase2Input" min="-180" max="180" step="1" class="w-20 bg-gray-700 rounded p-1 text-center font-mono text-sm">
-                                <span class="w-6 text-left text-sm text-gray-400">deg</span>
-                            </div>
-                        </div>
+
+                    <div id="paths-controls-container" class="space-y-6">
+                        <!-- Path controls will be dynamically inserted here -->
                     </div>
 
-                    <!-- Simulation Control -->
-                    <div class="flex justify-center mt-4">
+                    <div class="flex justify-around mt-6">
+                        <button id="addPathBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300">Add Path</button>
                         <button id="pauseButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300">Pause</button>
                     </div>
                 </div>
-                
-                 <div class="control-panel text-sm text-gray-300">
-                    <h3 class="text-lg font-semibold mb-2 text-center">How It Works</h3>
-                    <p class="mb-2"><strong class="text-indigo-400">Concept:</strong> The simulator shows two signals arriving at a receiver via different paths. Each path can have a different Doppler shift and phase.</p>
-                    <p class="mb-2"><strong class="text-indigo-400">Phase Shift:</strong> This simulates the initial phase difference between the paths, often caused by them traveling different distances to the receiver.</p>
-                    <p class="mb-2"><strong class="text-indigo-400">Interference:</strong> When the signals (phasors) are in-phase (point in the same direction), they add up, boosting the signal strength. This is <span class="text-cyan-400">constructive interference</span>.</p>
-                    <p><strong class="text-indigo-400">Fading:</strong> When they are out-of-phase (point opposite), they cancel out, causing a drop in signal strength (a "fade"). This is <span class="text-red-400">destructive interference</span>.</p>
-                 </div>
             </div>
             
             <!-- Visualizations Column -->
             <div class="lg:col-span-2 flex flex-col gap-6">
-                <div>
+                <div id="wave-container">
                     <h2 class="text-xl font-semibold mb-2 text-center">Combined Waveform</h2>
                     <canvas id="waveCanvas" width="800" height="250"></canvas>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
+                    <div id="phasor-container">
                         <h2 class="text-xl font-semibold mb-2 text-center">Phasor Diagram</h2>
                         <canvas id="phasorCanvas" width="400" height="400"></canvas>
                     </div>
-                    <div>
+                    <div id="pdp-container">
+                        <h2 class="text-xl font-semibold mb-2 text-center">Power Delay Profile</h2>
+                        <canvas id="pdpCanvas" width="400" height="400"></canvas>
+                    </div>
+                    <div id="freq-container">
+                        <h2 class="text-xl font-semibold mb-2 text-center">Frequency Response |H(f)|</h2>
+                        <canvas id="freqCanvas" width="400" height="400"></canvas>
+                    </div>
+                     <div id="rssi-container">
                         <h2 class="text-xl font-semibold mb-2 text-center">Received Signal Strength</h2>
                         <canvas id="rssiCanvas" width="400" height="400"></canvas>
                     </div>
@@ -172,172 +116,199 @@
     </div>
 
     <script>
-        // --- Simulation State ---
-        let simParams = {
-            doppler1: 1.0,
-            amp1: 0.8,
-            phase1: 0,
-            doppler2: -0.5,
-            amp2: 0.7,
-            phase2: 0
-        };
-        
+        // --- State Management ---
+        let paths = [];
         let time = 0;
         let isPlaying = true;
+        let nextPathId = 0;
         let animationFrameId;
-        
+        let carrierFreqFactor = 10;
         const rssiHistory = [];
         const MAX_RSSI_HISTORY = 400;
+        const PATH_COLORS = ['#3b82f6', '#22c55e', '#ef4444', '#f97316', '#a855f7', '#ec4899'];
+        let plotVisibility = {
+            wave: true,
+            phasor: true,
+            pdp: true,
+            freq: true,
+            rssi: true
+        };
 
-        // --- DOM Element Retrieval ---
-        const waveCanvas = document.getElementById('waveCanvas');
-        const phasorCanvas = document.getElementById('phasorCanvas');
-        const rssiCanvas = document.getElementById('rssiCanvas');
-        const waveCtx = waveCanvas.getContext('2d');
-        const phasorCtx = phasorCanvas.getContext('2d');
-        const rssiCtx = rssiCanvas.getContext('2d');
+        // --- DOM Elements ---
+        const waveCanvas = document.getElementById('waveCanvas'), waveCtx = waveCanvas.getContext('2d');
+        const phasorCanvas = document.getElementById('phasorCanvas'), phasorCtx = phasorCanvas.getContext('2d');
+        const pdpCanvas = document.getElementById('pdpCanvas'), pdpCtx = pdpCanvas.getContext('2d');
+        const freqCanvas = document.getElementById('freqCanvas'), freqCtx = freqCanvas.getContext('2d');
+        const rssiCanvas = document.getElementById('rssiCanvas'), rssiCtx = rssiCanvas.getContext('2d');
+        const controlsContainer = document.getElementById('paths-controls-container');
+        const addPathBtn = document.getElementById('addPathBtn');
         const pauseButton = document.getElementById('pauseButton');
+        const carrierFreqSlider = document.getElementById('carrierFreq');
+        const carrierFreqInput = document.getElementById('carrierFreqInput');
+        const plotTogglesContainer = document.getElementById('plot-toggles-container');
 
-        /**
-         * Links a slider and a number input to a parameter in the simParams object.
-         * Ensures they stay in sync and validates/clamps input.
-         * @param {string} sliderId - The ID of the range slider element.
-         * @param {string} inputId - The ID of the number input element.
-         * @param {string} paramKey - The key in the simParams object.
-         * @param {number} precision - The number of decimal places for the display value.
-         */
-        function setupControlSync(sliderId, inputId, paramKey, precision) {
-            const slider = document.getElementById(sliderId);
-            const input = document.getElementById(inputId);
-
-            // Set initial values from simParams
-            slider.value = simParams[paramKey];
-            input.value = simParams[paramKey].toFixed(precision);
-
-            // Event listener for the slider
-            slider.addEventListener('input', () => {
-                const value = parseFloat(slider.value);
-                simParams[paramKey] = value;
-                input.value = value.toFixed(precision);
-            });
-
-            // Event listener for the number input
-            input.addEventListener('change', () => {
-                let value = parseFloat(input.value);
-                const min = parseFloat(slider.min);
-                const max = parseFloat(slider.max);
-
-                if (isNaN(value)) {
-                    value = simParams[paramKey]; // Revert if input is not a valid number
-                }
-
-                // Clamp the value to the allowed range
-                const clampedValue = Math.max(min, Math.min(max, value));
-                
-                simParams[paramKey] = clampedValue;
-                slider.value = clampedValue;
-                input.value = clampedValue.toFixed(precision); // Update input to show the clamped value
-            });
+        // --- Core Logic ---
+        function createPath() {
+            const newPath = {
+                id: nextPathId++,
+                doppler: (paths.length === 0) ? 1 : (Math.random() * 4 - 2).toFixed(1),
+                amp: 0.5,
+                phase: 0,
+                delay: (paths.length === 0) ? 0 : (Math.random() * 0.4),
+                color: PATH_COLORS[paths.length % PATH_COLORS.length]
+            };
+            paths.push(newPath);
+            renderPathControls();
         }
 
-        function setupAllControls() {
-            setupControlSync('doppler1', 'doppler1Input', 'doppler1', 1);
-            setupControlSync('amp1', 'amp1Input', 'amp1', 2);
-            setupControlSync('phase1', 'phase1Input', 'phase1', 0);
-            setupControlSync('doppler2', 'doppler2Input', 'doppler2', 1);
-            setupControlSync('amp2', 'amp2Input', 'amp2', 2);
-            setupControlSync('phase2', 'phase2Input', 'phase2', 0);
+        function deletePath(id) {
+            if (paths.length <= 1) return;
+            paths = paths.filter(p => p.id !== id);
+            renderPathControls();
+        }
+        
+        // --- UI Rendering ---
+        function renderPathControls() {
+            controlsContainer.innerHTML = '';
+            paths.forEach(path => {
+                const controlBlock = document.createElement('div');
+                controlBlock.className = 'p-4 border rounded-lg';
+                controlBlock.style.borderColor = path.color;
+                controlBlock.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-medium" style="color: ${path.color};">Path ${path.id + 1}</h3>
+                        ${paths.length > 1 ? `<button data-id="${path.id}" class="delete-btn text-red-400 hover:text-red-600 font-bold text-2xl leading-none">&times;</button>` : ''}
+                    </div>
+                    <div class="space-y-3">
+                        <div><label class="block mb-1 text-sm">Doppler Shift (Hz)</label><div class="flex items-center gap-2"><input type="range" class="flex-grow" data-id="${path.id}" data-param="doppler" min="-10" max="10" value="${path.doppler}" step="0.1"><input type="number" data-id="${path.id}" data-param="doppler" value="${path.doppler}" class="w-20 bg-gray-700 rounded p-1 text-center font-mono text-sm"></div></div>
+                        <div><label class="block mb-1 text-sm">Amplitude</label><div class="flex items-center gap-2"><input type="range" class="flex-grow" data-id="${path.id}" data-param="amp" min="0" max="1" value="${path.amp}" step="0.05"><input type="number" data-id="${path.id}" data-param="amp" value="${path.amp}" class="w-20 bg-gray-700 rounded p-1 text-center font-mono text-sm"></div></div>
+                        <div><label class="block mb-1 text-sm">Phase Shift (deg)</label><div class="flex items-center gap-2"><input type="range" class="flex-grow" data-id="${path.id}" data-param="phase" min="-180" max="180" value="${path.phase}" step="1"><input type="number" data-id="${path.id}" data-param="phase" value="${path.phase}" class="w-20 bg-gray-700 rounded p-1 text-center font-mono text-sm"></div></div>
+                        <div><label class="block mb-1 text-sm">Relative Delay</label><div class="flex items-center gap-2"><input type="range" class="flex-grow" data-id="${path.id}" data-param="delay" min="0" max="1" value="${path.delay.toFixed(2)}" step="0.01"><input type="number" data-id="${path.id}" data-param="delay" value="${path.delay.toFixed(2)}" class="w-20 bg-gray-700 rounded p-1 text-center font-mono text-sm"></div></div>
+                    </div>`;
+                controlsContainer.appendChild(controlBlock);
+            });
+        }
+        
+        function renderPlotToggles() {
+            const plots = [
+                { key: 'wave', label: 'Combined Waveform' },
+                { key: 'phasor', label: 'Phasor Diagram' },
+                { key: 'pdp', label: 'Power Delay Profile' },
+                { key: 'freq', label: 'Frequency Response' },
+                { key: 'rssi', label: 'Received Signal Strength' }
+            ];
 
+            plotTogglesContainer.innerHTML = plots.map(plot => `
+                <div class="flex items-center justify-between text-sm">
+                    <label for="toggle-${plot.key}">${plot.label}</label>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" data-key="${plot.key}" id="toggle-${plot.key}" class="sr-only peer plot-toggle" ${plotVisibility[plot.key] ? 'checked' : ''}>
+                        <div class="w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+            `).join('');
+        }
+
+        function updatePlotVisibility() {
+            for (const key in plotVisibility) {
+                const container = document.getElementById(`${key}-container`);
+                if (container) {
+                    container.style.display = plotVisibility[key] ? 'block' : 'none';
+                }
+            }
+        }
+
+
+        // --- Event Handling ---
+        function setupEventListeners() {
+            addPathBtn.addEventListener('click', createPath);
             pauseButton.addEventListener('click', () => {
                 isPlaying = !isPlaying;
                 pauseButton.textContent = isPlaying ? 'Pause' : 'Play';
-                if (isPlaying) {
-                    animate();
-                } else {
-                    cancelAnimationFrame(animationFrameId);
-                }
+                if (isPlaying) animate(); else cancelAnimationFrame(animationFrameId);
             });
             
+            carrierFreqSlider.addEventListener('input', e => { carrierFreqFactor = parseFloat(e.target.value); carrierFreqInput.value = carrierFreqFactor; });
+            carrierFreqInput.addEventListener('change', e => { carrierFreqFactor = parseFloat(e.target.value); carrierFreqSlider.value = carrierFreqFactor; });
+            
+            plotTogglesContainer.addEventListener('change', e => {
+                if(e.target.classList.contains('plot-toggle')) {
+                    const key = e.target.dataset.key;
+                    plotVisibility[key] = e.target.checked;
+                    updatePlotVisibility();
+                    if(!isPlaying) draw(); // Redraw static view if paused
+                }
+            });
+
+            controlsContainer.addEventListener('input', e => {
+                const id = parseInt(e.target.dataset.id), param = e.target.dataset.param;
+                const path = paths.find(p => p.id === id);
+                if (path) {
+                    let value = parseFloat(e.target.value);
+                    if (isNaN(value)) return;
+                    path[param] = value;
+                    controlsContainer.querySelectorAll(`[data-id="${id}"][data-param="${param}"]`).forEach(input => input.value = value);
+                }
+            });
+            controlsContainer.addEventListener('click', e => { if (e.target.classList.contains('delete-btn')) deletePath(parseInt(e.target.dataset.id)); });
             window.addEventListener('resize', handleResize);
         }
 
-        // --- Canvas Sizing and Responsiveness ---
+        // --- Canvas Drawing ---
         function handleResize() {
-            waveCanvas.width = waveCanvas.clientWidth;
-            waveCanvas.height = waveCanvas.clientHeight;
-            phasorCanvas.width = phasorCanvas.clientWidth;
-            phasorCanvas.height = phasorCanvas.clientHeight;
-            rssiCanvas.width = rssiCanvas.clientWidth;
-            rssiCanvas.height = rssiCanvas.clientHeight;
-            if (!isPlaying) { draw(); }
+            const canvases = [waveCanvas, phasorCanvas, pdpCanvas, freqCanvas, rssiCanvas];
+            canvases.forEach(c => { c.width = c.clientWidth; c.height = c.clientHeight; });
+            if (!isPlaying) draw();
         }
-        
-        // --- Drawing Functions ---
+
+        function getPathAngle(path, t_offset = 0) {
+            const manualPhaseRad = path.phase * Math.PI / 180;
+            const delayPhaseRad = -2 * Math.PI * carrierFreqFactor * path.delay;
+            const dopplerPhaseRad = 2 * Math.PI * path.doppler * (time + t_offset);
+            return manualPhaseRad + delayPhaseRad + dopplerPhaseRad;
+        }
+
         function drawWaveCanvas() {
             const w = waveCanvas.width, h = waveCanvas.height, midY = h / 2;
             waveCtx.clearRect(0, 0, w, h);
-            waveCtx.lineWidth = 2;
-            const y_scale = h / 4.5;
-            const phase1Rad = simParams.phase1 * Math.PI / 180;
-            const phase2Rad = simParams.phase2 * Math.PI / 180;
-
-            const drawPath = (color, doppler, amp, phaseRad) => {
-                waveCtx.strokeStyle = color;
-                waveCtx.beginPath();
+            const y_scale = h / ((paths.reduce((sum, p) => sum + p.amp, 0) || 1) * 2.25);
+            paths.forEach(path => {
+                waveCtx.strokeStyle = path.color; waveCtx.lineWidth = 2; waveCtx.beginPath();
                 for (let x = 0; x < w; x++) {
-                    const t_local = x / w;
-                    const angle = 2 * Math.PI * doppler * (time + t_local) + phaseRad;
-                    const y = midY - amp * Math.sin(angle) * y_scale;
-                    if (x === 0) waveCtx.moveTo(x, y); else waveCtx.lineTo(x, y);
+                    const angle = getPathAngle(path, x / w);
+                    if (x === 0) waveCtx.moveTo(x, midY - path.amp * Math.sin(angle) * y_scale);
+                    else waveCtx.lineTo(x, midY - path.amp * Math.sin(angle) * y_scale);
                 }
                 waveCtx.stroke();
-            };
-            drawPath('#3b82f6', simParams.doppler1, simParams.amp1, phase1Rad);
-            drawPath('#22c55e', simParams.doppler2, simParams.amp2, phase2Rad);
-            
-            waveCtx.strokeStyle = '#eab308';
-            waveCtx.lineWidth = 3;
-            waveCtx.beginPath();
+            });
+            waveCtx.strokeStyle = '#eab308'; waveCtx.lineWidth = 3; waveCtx.beginPath();
             for (let x = 0; x < w; x++) {
-                const t_local = x / w;
-                const angle1 = 2 * Math.PI * simParams.doppler1 * (time + t_local) + phase1Rad;
-                const y1 = simParams.amp1 * Math.sin(angle1);
-                const angle2 = 2 * Math.PI * simParams.doppler2 * (time + t_local) + phase2Rad;
-                const y2 = simParams.amp2 * Math.sin(angle2);
-                const y_sum = midY - (y1 + y2) * y_scale;
-                if (x === 0) waveCtx.moveTo(x, y_sum); else waveCtx.lineTo(x, y_sum);
+                let y_sum = paths.reduce((sum, path) => sum + path.amp * Math.sin(getPathAngle(path, x/w)), 0);
+                if (x === 0) waveCtx.moveTo(x, midY - y_sum * y_scale);
+                else waveCtx.lineTo(x, midY - y_sum * y_scale);
             }
             waveCtx.stroke();
         }
 
         function drawPhasorCanvas() {
-            const w = phasorCanvas.width, h = phasorCanvas.height;
-            const centerX = w / 2, centerY = h / 2;
-            const scale = Math.min(w, h) / 4.5;
+            const w = phasorCanvas.width, h = phasorCanvas.height, centerX = w/2, centerY = h/2;
+            const maxAmpSum = paths.reduce((sum, p) => sum + p.amp, 0);
+            const scale = Math.min(w, h) / (maxAmpSum > 0 ? maxAmpSum * 2.25 : 2.25);
             phasorCtx.clearRect(0, 0, w, h);
-
-            const angle1 = 2 * Math.PI * simParams.doppler1 * time + (simParams.phase1 * Math.PI / 180);
-            const x1 = simParams.amp1 * Math.cos(angle1) * scale;
-            const y1 = simParams.amp1 * Math.sin(angle1) * scale;
-            const angle2 = 2 * Math.PI * simParams.doppler2 * time + (simParams.phase2 * Math.PI / 180);
-            const x2 = simParams.amp2 * Math.cos(angle2) * scale;
-            const y2 = simParams.amp2 * Math.sin(angle2) * scale;
-            const sumX = x1 + x2, sumY = y1 + y2;
-
-            phasorCtx.strokeStyle = '#4a5568';
-            phasorCtx.lineWidth = 0.5;
-            phasorCtx.beginPath();
-            phasorCtx.moveTo(0, centerY); phasorCtx.lineTo(w, centerY);
-            phasorCtx.moveTo(centerX, 0); phasorCtx.lineTo(centerX, h);
-            phasorCtx.stroke();
-
-            drawVector(phasorCtx, centerX, centerY, x1, y1, '#3b82f6', 3);
-            drawVector(phasorCtx, centerX, centerY, x2, y2, '#22c55e', 3);
-            drawVector(phasorCtx, centerX, centerY, sumX, sumY, '#eab308', 4);
-            
-            return Math.sqrt(sumX * sumX + sumY * sumY) / scale;
+            let totalX = 0, totalY = 0;
+            phasorCtx.strokeStyle = '#4a5568'; phasorCtx.lineWidth = 0.5;
+            phasorCtx.beginPath(); phasorCtx.moveTo(0, centerY); phasorCtx.lineTo(w, centerY); phasorCtx.moveTo(centerX, 0); phasorCtx.lineTo(centerX, h); phasorCtx.stroke();
+            paths.forEach(path => {
+                const angle = getPathAngle(path);
+                const x = path.amp * Math.cos(angle) * scale, y = path.amp * Math.sin(angle) * scale;
+                totalX += x; totalY += y;
+                drawVector(phasorCtx, centerX, centerY, x, y, path.color, 3);
+            });
+            drawVector(phasorCtx, centerX, centerY, totalX, totalY, '#eab308', 4);
+            // This function now returns the calculated RSSI value for other functions to use.
+            return Math.sqrt(totalX * totalX + totalY * totalY) / scale;
         }
-        
+
         function drawVector(ctx, startX, startY, vx, vy, color, lineWidth) {
             ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lineWidth;
             const endX = startX + vx, endY = startY - vy;
@@ -349,50 +320,104 @@
             ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
             ctx.closePath(); ctx.fill();
         }
+        
+        function drawPdpCanvas() {
+            const w = pdpCanvas.width, h = pdpCanvas.height, p = { t: 20, r: 20, b: 40, l: 50 };
+            const plotW = w - p.l - p.r, plotH = h - p.t - p.b;
+            pdpCtx.clearRect(0, 0, w, h);
+            pdpCtx.fillStyle = '#9ca3af'; pdpCtx.strokeStyle = '#4a5568'; pdpCtx.font = '12px Inter';
+            pdpCtx.lineWidth = 1; pdpCtx.beginPath(); pdpCtx.moveTo(p.l, p.t); pdpCtx.lineTo(p.l, p.t + plotH); pdpCtx.lineTo(p.l + plotW, p.t + plotH); pdpCtx.stroke();
+            pdpCtx.textAlign = 'right'; pdpCtx.textBaseline = 'middle';
+            for (let i = 0; i <= 5; i++) { pdpCtx.fillText((i / 5).toFixed(1), p.l - 8, p.t + plotH * (1 - i / 5)); }
+            pdpCtx.save(); pdpCtx.translate(p.l - 35, h / 2); pdpCtx.rotate(-Math.PI / 2); pdpCtx.textAlign = 'center'; pdpCtx.fillText('Power (Amp²)', 0, 0); pdpCtx.restore();
+            pdpCtx.textAlign = 'center'; pdpCtx.textBaseline = 'top';
+            for (let i = 0; i <= 5; i++) { pdpCtx.fillText((i / 5).toFixed(1), p.l + plotW * (i / 5), p.t + plotH + 8); }
+            pdpCtx.fillText('Relative Delay', w / 2 + 10, h - 15);
+            paths.forEach(path => {
+                const x = p.l + plotW * path.delay, power = path.amp * path.amp, y = p.t + plotH * (1 - power);
+                pdpCtx.strokeStyle = path.color; pdpCtx.lineWidth = 3;
+                pdpCtx.beginPath(); pdpCtx.moveTo(x, p.t + plotH); pdpCtx.lineTo(x, y); pdpCtx.stroke();
+            });
+        }
+        
+        function drawFreqCanvas() {
+            const w = freqCanvas.width, h = freqCanvas.height, p = { t: 20, r: 20, b: 40, l: 50 };
+            const plotW = w - p.l - p.r, plotH = h - p.t - p.b;
+            const maxFreq = 5.0; 
+            freqCtx.clearRect(0, 0, w, h);
+            freqCtx.fillStyle = '#9ca3af'; freqCtx.strokeStyle = '#4a5568'; freqCtx.font = '12px Inter';
+            const maxGain = paths.reduce((sum, path) => sum + path.amp, 0) || 1;
+            freqCtx.textAlign = 'right'; freqCtx.textBaseline = 'middle';
+            for(let i = 0; i <= 4; i++) {
+                const gain = (maxGain / 4) * i;
+                const y = p.t + plotH - (gain / maxGain) * plotH;
+                freqCtx.fillText(gain.toFixed(1), p.l - 8, y);
+            }
+            freqCtx.save(); freqCtx.translate(p.l - 35, h/2); freqCtx.rotate(-Math.PI/2); freqCtx.textAlign = 'center'; freqCtx.fillText("Gain |H(f)|", 0, 0); freqCtx.restore();
+            freqCtx.textAlign = 'center'; freqCtx.textBaseline = 'top';
+            for (let i = 0; i <= 5; i++) {
+                const f = (maxFreq / 5) * i;
+                const x = p.l + plotW * (f / maxFreq);
+                freqCtx.fillText(f.toFixed(1), x, p.t + plotH + 8);
+            }
+            freqCtx.fillText("Frequency (Relative)", w / 2 + 10, h - 15);
+            freqCtx.strokeStyle = '#c084fc'; freqCtx.lineWidth = 2.5; freqCtx.beginPath();
+            for(let i = 0; i <= plotW; i++) {
+                const f = (i / plotW) * maxFreq;
+                let sumX = 0, sumY = 0;
+                paths.forEach(path => {
+                    const angle = getPathAngle(path) - 2 * Math.PI * f * path.delay;
+                    sumX += path.amp * Math.cos(angle);
+                    sumY += path.amp * Math.sin(angle);
+                });
+                const gain = Math.sqrt(sumX*sumX + sumY*sumY);
+                const x = p.l + i;
+                const y = p.t + plotH - (gain / maxGain) * plotH;
+                if (i === 0) freqCtx.moveTo(x, y); else freqCtx.lineTo(x, y);
+            }
+            freqCtx.stroke();
+        }
 
         function drawRssiCanvas(currentRssi) {
             rssiHistory.push(currentRssi);
             if (rssiHistory.length > MAX_RSSI_HISTORY) rssiHistory.shift();
-
-            const w = rssiCanvas.width, h = rssiCanvas.height;
+            const w = rssiCanvas.width, h = rssiCanvas.height, p = { t: 20, r: 20, b: 30, l: 50 };
+            const plotW = w - p.l - p.r, plotH = h - p.t - p.b;
             rssiCtx.clearRect(0, 0, w, h);
-            rssiCtx.strokeStyle = '#4a5568';
-            rssiCtx.fillStyle = '#9ca3af';
-            rssiCtx.font = '12px Inter';
+            rssiCtx.fillStyle = '#9ca3af'; rssiCtx.strokeStyle = '#4a5568'; rssiCtx.font = '12px Inter';
             rssiCtx.textAlign = 'right';
-            
-            const maxRssi = simParams.amp1 + simParams.amp2;
-            const levels = 5;
-            for(let i = 0; i <= levels; i++) {
-                const val = (maxRssi / levels) * i;
-                if(maxRssi === 0) continue; // Avoid division by zero
-                const y = h - (val / maxRssi) * (h - 20) - 10;
-                rssiCtx.beginPath();
-                rssiCtx.moveTo(35, y);
-                rssiCtx.lineTo(w, y);
-                rssiCtx.stroke();
-                rssiCtx.fillText(val.toFixed(1), 30, y + 4);
+            const maxRssi = paths.reduce((sum, p) => sum + p.amp, 0);
+            for(let i = 0; i <= 4; i++) {
+                const val = (maxRssi / 4) * i;
+                if (maxRssi === 0) continue;
+                const y = p.t + plotH - (val / maxRssi) * plotH;
+                rssiCtx.beginPath(); rssiCtx.moveTo(p.l - 5, y); rssiCtx.lineTo(w - p.r, y); rssiCtx.globalAlpha = 0.2; rssiCtx.stroke(); rssiCtx.globalAlpha = 1.0;
+                rssiCtx.fillText(val.toFixed(1), p.l - 8, y);
             }
-            
-            rssiCtx.strokeStyle = '#eab308';
-            rssiCtx.lineWidth = 2.5;
-            rssiCtx.beginPath();
+            rssiCtx.fillText('Time', w / 2, h - 5);
+            rssiCtx.strokeStyle = '#eab308'; rssiCtx.lineWidth = 2.5; rssiCtx.beginPath();
             for (let i = 0; i < rssiHistory.length; i++) {
-                const x = (i / (MAX_RSSI_HISTORY - 1)) * w;
-                let y = h - 10; // Default to bottom if maxRssi is 0
-                if (maxRssi > 0) {
-                     y = h - (rssiHistory[i] / maxRssi) * (h - 20) - 10;
-                }
+                const x = p.l + (i / (MAX_RSSI_HISTORY - 1)) * plotW;
+                let y = p.t + plotH;
+                if (maxRssi > 0) y = p.t + plotH - (rssiHistory[i] / maxRssi) * plotH;
                 if (i === 0) rssiCtx.moveTo(x, y); else rssiCtx.lineTo(x, y);
             }
             rssiCtx.stroke();
         }
 
-        // --- Main Animation Loop ---
+        // --- Animation Loop ---
         function draw() {
-            drawWaveCanvas();
-            const currentRssi = drawPhasorCanvas();
-            drawRssiCanvas(currentRssi);
+            // Always calculate phasor math to get RSSI, as it's inexpensive.
+            const currentRssi = drawPhasorCanvas(); 
+
+            // Conditionally draw plots based on visibility
+            if (plotVisibility.wave) drawWaveCanvas();
+            if (plotVisibility.pdp) drawPdpCanvas();
+            if (plotVisibility.freq) drawFreqCanvas();
+            if (plotVisibility.rssi) drawRssiCanvas(currentRssi);
+
+            // Clear canvases that are not visible to prevent stale drawings
+            if(!plotVisibility.phasor) phasorCtx.clearRect(0, 0, phasorCanvas.width, phasorCanvas.height);
         }
         
         function animate() {
@@ -404,11 +429,13 @@
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
-            setupAllControls();
+            renderPlotToggles();
+            updatePlotVisibility();
+            setupEventListeners();
             handleResize();
+            createPath();
             animate();
         });
-
     </script>
 </body>
 </html>
