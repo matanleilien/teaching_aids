@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Warm Neutrals -->
-    <!-- Application Structure Plan: The application is designed as a single-page educational tool to guide users from concept to exploration to conclusion. It begins with a header and a "Core Concepts" section explaining the underlying physics. The main section is a centered interactive dashboard featuring user-controlled sliders (Rx Power, Bandwidth) and a display for derived values (Noise, SNR, Capacity, MCS, Throughput). A data visualization, a line chart showing capacity vs. power for multiple bandwidths, is included below to show trends. The page concludes with a "Key Takeaways" section to reinforce the learned principles. This structure was chosen to create a focused learning path, making a complex topic intuitive and engaging. -->
+    <!-- Application Structure Plan: The application is designed as a single-page educational tool. It begins with "Core Concepts", then moves to a two-column interactive dashboard. The left column contains sliders for Rx Power and Bandwidth and a card for all derived values. The right column displays the "Capacity vs. Power" line chart. This side-by-side layout on larger screens allows users to see the immediate impact of their adjustments on the chart. The page concludes with "Key Takeaways". This structure was chosen to create a direct cause-and-effect learning experience. -->
     <!-- Visualization & Content Choices: 
         - Report Info: Relationship between Rx Power, BW, Noise Power, SNR, Channel Capacity, and practical throughput via MCS.
         - Goal: Inform & Educate.
@@ -33,14 +33,14 @@
         }
         .chart-container {
             position: relative;
-            height: 300px;
+            height: 400px;
             width: 100%;
             max-width: 700px;
             margin: auto;
         }
-        @media (min-width: 768px) {
+        @media (min-width: 1024px) {
             .chart-container {
-                height: 400px;
+                height: 550px;
             }
         }
         input[type=range]::-webkit-slider-thumb {
@@ -98,9 +98,10 @@
                 </div>
             </section>
 
-            <section id="simulator">
-                <div id="controls" class="max-w-2xl mx-auto">
-                    <h2 class="text-2xl font-bold mb-6 text-center">Interactive Simulator</h2>
+            <section id="interactive-dashboard" class="grid lg:grid-cols-5 gap-8 md:gap-12 items-start">
+                
+                <div id="controls" class="lg:col-span-2">
+                    <h2 class="text-2xl font-bold mb-6">Interactive Controls</h2>
                     
                     <div class="space-y-8">
                         <div>
@@ -152,14 +153,15 @@
                         </div>
                     </div>
                 </div>
-            </section>
-            
-            <section id="capacity-graph" class="mt-12 pt-8 border-t">
-                 <h2 class="text-2xl font-bold mb-2 text-center">Channel Capacity vs. Received Power</h2>
-                 <p class="text-center text-gray-600 mb-4">Compare capacity curves for different bandwidths. The highlighted line matches the slider setting.</p>
-                <div class="chart-container">
-                    <canvas id="capacityChart"></canvas>
+                
+                <div id="capacity-graph" class="lg:col-span-3">
+                    <h2 class="text-2xl font-bold mb-2 text-center">Channel Capacity vs. Received Power</h2>
+                    <p class="text-center text-gray-600 mb-4">Compare capacity curves for different bandwidths. The highlighted line matches the slider setting.</p>
+                    <div class="chart-container">
+                        <canvas id="capacityChart"></canvas>
+                    </div>
                 </div>
+
             </section>
             
             <section id="takeaways" class="mt-12 border-t pt-8">
