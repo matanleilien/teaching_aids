@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive RF Signal & Noise Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application is designed as a single-page educational tool to guide users from concept to exploration to conclusion. It begins with a header and a "Core Concepts" section explaining the underlying physics. The main section is a centered interactive dashboard featuring user-controlled sliders (Rx Power, Bandwidth) and a display for derived values (Noise, SNR, Capacity, MCS, Throughput). A data visualization, a line chart showing capacity vs. power for multiple bandwidths, is included below to show trends. The page concludes with a "Key Takeaways" section to reinforce the learned principles. This structure was chosen to create a focused learning path, making a complex topic intuitive and engaging. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Relationship between Rx Power, BW, Noise Power, SNR, Channel Capacity, and practical throughput via MCS.
+        - Goal: Inform & Educate.
+        - Presentation: The core concepts are presented as clear text with formatted formulas for readability. 
+        - Interaction: Two HTML range sliders provide an intuitive method for users to manipulate the primary input variables (Rx Power and Bandwidth).
+        - Visualization: A Chart.js line chart shows the relationship between Channel Capacity and Rx Power for multiple, distinct BW values. This allows users to see and compare overall trends. A highlighted line and a point indicate the user's current selection. Justification: Line chart is best for trends. Library: Chart.js (Canvas-based).
+        - Dynamic Updates: All derived values (text outputs) and the chart are updated instantly using vanilla JavaScript on slider input, including a recommendation for the best LTE-like MCS and its resulting throughput.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF7;
+            color: #4A4A4A;
+        }
+        .accent-color {
+            color: #4C51BF;
+        }
+        .accent-bg {
+            background-color: #4C51BF;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            max-width: 700px;
+            margin: auto;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4C51BF;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        input[type=range]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4C51BF;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto px-4 py-8 md:py-12">
+        
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-5xl font-bold accent-color">Interactive RF Signal & Noise Explorer</h1>
+            <p class="text-lg md:text-xl mt-2 text-gray-600">Understand the fundamental relationship between signal power, bandwidth, and noise.</p>
+        </header>
+
+        <main class="bg-white rounded-2xl shadow-lg p-6 md:p-10">
+            
+            <section id="concepts" class="mb-12 border-b pb-8">
+                <h2 class="text-2xl font-bold mb-4">Core Concepts</h2>
+                <div class="space-y-4 text-gray-700 leading-relaxed">
+                   <p>In any wireless system, the Signal-to-Noise Ratio (SNR) is the most critical measure of signal quality. It's not just about how strong the signal is, but how strong it is <strong class="accent-color">relative</strong> to the background noise. This relationship, along with bandwidth, determines the theoretical maximum data rate, defined by the Shannon-Hartley theorem.</p>
+                    <div>
+                        <h4 class="font-semibold text-lg mt-4 mb-2">Key Formulas</h4>
+                        <div class="grid md:grid-cols-3 gap-4 text-center">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="font-mono text-lg">P_N = k_B × T × BW</p>
+                                <p class="text-sm mt-1">Total Noise Power (W)</p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="font-mono text-lg">SNR = P_Rx / P_N</p>
+                                <p class="text-sm mt-1">Signal-to-Noise Ratio</p>
+                            </div>
+                             <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="font-mono text-lg">C = BW × log₂(1+SNR)</p>
+                                <p class="text-sm mt-1">Channel Capacity (bps)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="simulator">
+                <div id="controls" class="max-w-2xl mx-auto">
+                    <h2 class="text-2xl font-bold mb-6 text-center">Interactive Simulator</h2>
+                    
+                    <div class="space-y-8">
+                        <div>
+                            <label for="rxPower" class="block font-medium mb-2">Received Power (Rx)</label>
+                            <input type="range" id="rxPower" min="-110" max="-60" value="-85" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <div class="flex justify-between mt-2 text-sm text-gray-500">
+                                <span>-110 dBm</span>
+                                <span id="rxPowerValue" class="font-bold text-lg accent-color">-85 dBm</span>
+                                <span>-60 dBm</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="bandwidth" class="block font-medium mb-2">Signal Bandwidth (BW)</label>
+                            <input type="range" id="bandwidth" min="1" max="40" value="5" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                             <div class="flex justify-between mt-2 text-sm text-gray-500">
+                                <span>1 MHz</span>
+                                <span id="bandwidthValue" class="font-bold text-lg accent-color">5 MHz</span>
+                                <span>40 MHz</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-10 bg-indigo-50 p-6 rounded-xl">
+                        <h3 class="font-bold text-xl mb-4">Derived Values</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6">
+                            <div>
+                                <span class="font-medium text-sm text-gray-600">Total Noise Power (P_N)</span>
+                                <p id="noisePower" class="font-bold text-xl text-red-500">-107.00 dBm</p>
+                            </div>
+                             <div>
+                                <span class="font-medium text-sm text-gray-600">Signal-to-Noise Ratio (SNR)</span>
+                                <p id="snr" class="font-bold text-xl text-green-600">22.00 dB</p>
+                            </div>
+                             <div class="border-t pt-3 mt-3 sm:col-span-2">
+                                <span class="font-medium text-sm text-gray-600">Theoretical Channel Capacity (C)</span>
+                                <p id="capacity" class="font-bold text-xl accent-color">36.56 Mbps</p>
+                            </div>
+                             <div class="border-t pt-3 mt-3 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6">
+                                <div>
+                                    <span class="font-medium text-sm text-gray-600">Recommended MCS (LTE-like)</span>
+                                    <p id="mcs" class="font-bold text-xl accent-color">N/A</p>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-sm text-gray-600">Achievable Throughput</span>
+                                    <p id="throughput" class="font-bold text-xl accent-color">0.00 Mbps</p>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="capacity-graph" class="mt-12 pt-8 border-t">
+                 <h2 class="text-2xl font-bold mb-2 text-center">Channel Capacity vs. Received Power</h2>
+                 <p class="text-center text-gray-600 mb-4">Compare capacity curves for different bandwidths. The highlighted line matches the slider setting.</p>
+                <div class="chart-container">
+                    <canvas id="capacityChart"></canvas>
+                </div>
+            </section>
+            
+            <section id="takeaways" class="mt-12 border-t pt-8">
+                <h2 class="text-2xl font-bold mb-4">Key Takeaways</h2>
+                <ul class="list-disc list-inside space-y-2 text-gray-700 leading-relaxed">
+                    <li>For a fixed signal power, <strong class="accent-color">increasing the bandwidth</strong> will always <strong class="text-red-600">increase the total noise power</strong> and decrease the SNR.</li>
+                    <li>Channel Capacity (maximum data rate) increases with both <strong class="accent-color">wider bandwidth</strong> and <strong class="text-green-600">higher SNR</strong>.</li>
+                    <li>The **Recommended MCS** (Modulation and Coding Scheme) represents the most efficient data encoding possible for the current SNR. A higher SNR allows for a more complex MCS, leading to higher throughput.</li>
+                    <li>**Achievable Throughput** is a practical data rate based on the MCS, while Channel Capacity is a theoretical maximum. Throughput will always be lower than capacity.</li>
+                </ul>
+            </section>
+
+        </main>
+
+        <footer class="text-center mt-10 text-gray-500 text-sm">
+            <p>Interactive Educational Tool | RF Communications</p>
+        </footer>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const rxPowerSlider = document.getElementById('rxPower');
+            const bandwidthSlider = document.getElementById('bandwidth');
+            
+            const rxPowerValueSpan = document.getElementById('rxPowerValue');
+            const bandwidthValueSpan = document.getElementById('bandwidthValue');
+            const noisePowerSpan = document.getElementById('noisePower');
+            const snrSpan = document.getElementById('snr');
+            const capacitySpan = document.getElementById('capacity');
+            const mcsSpan = document.getElementById('mcs');
+            const throughputSpan = document.getElementById('throughput');
+
+            const capacityCtx = document.getElementById('capacityChart').getContext('2d');
+            
+            const MCS_TABLE_LTE = [
+                { index: 28, modulation: '64-QAM', bits: 6, rate: 0.925, minSnr: 25.5 },
+                { index: 24, modulation: '64-QAM', bits: 6, rate: 0.754, minSnr: 21.5 },
+                { index: 20, modulation: '64-QAM', bits: 6, rate: 0.587, minSnr: 18.0 },
+                { index: 17, modulation: '64-QAM', bits: 6, rate: 0.478, minSnr: 16.5 },
+                { index: 16, modulation: '16-QAM', bits: 4, rate: 0.772, minSnr: 14.5 },
+                { index: 13, modulation: '16-QAM', bits: 4, rate: 0.601, minSnr: 11.5 },
+                { index: 10, modulation: '16-QAM', bits: 4, rate: 0.438, minSnr: 9.0 },
+                { index: 7, modulation: 'QPSK', bits: 2, rate: 0.754, minSnr: 6.5 },
+                { index: 4, modulation: 'QPSK', bits: 2, rate: 0.438, minSnr: 3.0 },
+                { index: 1, modulation: 'QPSK', bits: 2, rate: 0.234, minSnr: -1.0 },
+                { index: 0, modulation: 'QPSK', bits: 2, rate: 0.188, minSnr: -3.0 }
+            ];
+
+            const PLOT_BWS = [5, 10, 15, 20, 25, 30, 35, 40];
+            const COLORS = [
+                'rgba(199, 210, 254, 1)', 'rgba(165, 180, 252, 1)', 'rgba(129, 140, 248, 1)',
+                'rgba(99, 102, 241, 1)', 'rgba(79, 70, 229, 1)', 'rgba(67, 56, 202, 1)',
+                'rgba(55, 48, 163, 1)', 'rgba(49, 46, 129, 1)'
+            ];
+            
+            const capacityChartDatasets = PLOT_BWS.map((bw, index) => ({
+                label: `Capacity at ${bw} MHz`,
+                data: [],
+                borderColor: COLORS[index],
+                borderWidth: 1.5,
+                fill: false,
+                tension: 0.1,
+                pointRadius: 0
+            }));
+            
+            capacityChartDatasets.push({
+                label: 'Current Setting',
+                data: [],
+                type: 'bubble',
+                backgroundColor: 'rgba(239, 68, 68, 1)',
+                radius: 7,
+                hoverRadius: 9
+            });
+
+            let capacityChart = new Chart(capacityCtx, {
+                type: 'line',
+                data: { labels: [], datasets: capacityChartDatasets },
+                options: {
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: 'Received Power (dBm)' } },
+                        y: { beginAtZero: true, title: { display: true, text: 'Channel Capacity (Mbps)' } }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: { mode: 'index', intersect: false }
+                    }
+                }
+            });
+
+            function findBestMcs(snr) {
+                for (let i = 0; i < MCS_TABLE_LTE.length; i++) {
+                    if (snr >= MCS_TABLE_LTE[i].minSnr) {
+                        return MCS_TABLE_LTE[i];
+                    }
+                }
+                return null;
+            }
+
+            function calculateAllCapacityCurves() {
+                const k_B = 1.38e-23;
+                const T = 290;
+                const rxPowerRange = [];
+                for (let p = -110; p <= -60; p++) {
+                    rxPowerRange.push(p);
+                }
+                capacityChart.data.labels = rxPowerRange;
+
+                PLOT_BWS.forEach((bw, index) => {
+                    const BW_Hz = bw * 1e6;
+                    const Pn_W = k_B * T * BW_Hz;
+                    const Pn_dBm = 10 * Math.log10(Pn_W / 0.001);
+                    
+                    const capacityData = rxPowerRange.map(p_dbm => {
+                        const snr_db = p_dbm - Pn_dBm;
+                        const snr_lin = Math.pow(10, snr_db / 10);
+                        const c_bps = BW_Hz * Math.log2(1 + snr_lin);
+                        return c_bps < 0 ? 0 : c_bps / 1e6;
+                    });
+                    capacityChart.data.datasets[index].data = capacityData;
+                });
+                capacityChart.update();
+            }
+
+            function updateDisplayAndHighlight() {
+                const Prx_dBm = parseFloat(rxPowerSlider.value);
+                const BW_MHz = parseFloat(bandwidthSlider.value);
+                const k_B = 1.38e-23;
+                const T = 290;
+
+                rxPowerValueSpan.textContent = `${Prx_dBm.toFixed(0)} dBm`;
+                bandwidthValueSpan.textContent = `${BW_MHz.toFixed(0)} MHz`;
+
+                const BW_Hz = BW_MHz * 1e6;
+                const Pn_W = k_B * T * BW_Hz;
+                const Pn_dBm = 10 * Math.log10(Pn_W / 0.001);
+                const SNR_dB = Prx_dBm - Pn_dBm;
+                
+                const SNR_linear = Math.pow(10, SNR_dB / 10);
+                const C_bps = BW_Hz * Math.log2(1 + SNR_linear);
+                const C_mbps = C_bps < 0 ? 0 : C_bps / 1e6;
+
+                noisePowerSpan.textContent = `${Pn_dBm.toFixed(2)} dBm`;
+                snrSpan.textContent = `${SNR_dB.toFixed(2)} dB`;
+                capacitySpan.textContent = `${C_mbps.toFixed(2)} Mbps`;
+
+                const recommendedMcs = findBestMcs(SNR_dB);
+                let throughput_mbps = 0;
+                let mcsText = 'N/A';
+
+                if (recommendedMcs) {
+                    mcsText = `${recommendedMcs.modulation} (I: ${recommendedMcs.index})`;
+                    const efficiencyFactor = 0.75; 
+                    throughput_mbps = BW_MHz * recommendedMcs.bits * recommendedMcs.rate * efficiencyFactor;
+                }
+                mcsSpan.textContent = mcsText;
+                throughputSpan.textContent = `${throughput_mbps.toFixed(2)} Mbps`;
+
+                const highlightDatasetIndex = PLOT_BWS.length;
+                capacityChart.data.datasets[highlightDatasetIndex].data = [{ x: Prx_dBm, y: C_mbps }];
+                
+                let closestBwIndex = 0;
+                let minDiff = Infinity;
+                PLOT_BWS.forEach((bw, index) => {
+                    const diff = Math.abs(bw - BW_MHz);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closestBwIndex = index;
+                    }
+                });
+
+                capacityChart.data.datasets.forEach((dataset, index) => {
+                    if (index < PLOT_BWS.length) {
+                        dataset.borderWidth = (index === closestBwIndex) ? 3.5 : 1.5;
+                        dataset.borderColor = (index === closestBwIndex) ? COLORS[index].replace('1)', '1)') : COLORS[index].replace('1)', '0.3)');
+                    }
+                });
+
+                capacityChart.update();
+            }
+            
+            calculateAllCapacityCurves();
+            updateDisplayAndHighlight();
+
+            rxPowerSlider.addEventListener('input', updateDisplayAndHighlight);
+            bandwidthSlider.addEventListener('input', updateDisplayAndHighlight);
+        });
+    </script>
+</body>
+</html>
