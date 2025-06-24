@@ -50,7 +50,7 @@
                 </svg>
             </div>
             
-            <!-- *** CHANGED: Formula Updated *** -->
+            <!-- Formula Display -->
             <div class="mt-6 text-center text-gray-300 space-y-2 max-w-4xl mx-auto bg-gray-800 p-4 rounded-lg">
                  <p>The complex baseband FM signal $$s(t)$$ is generated using the formula:</p>
                  <div class="text-xl">
@@ -58,7 +58,7 @@
                  </div>
                  <p>where the modulated phase $$\phi(t)$$ is:</p>
                  <div class="text-xl">
-                    $$\phi(t) = 2\pi f_c t + 2\pi f_{\Delta} \int_{0}^{t} m(\tau) d\tau$$
+                    $$\phi(t) = 2\pi f_c t + 2\pi \int_{0}^{t} f_{\Delta} m(\tau) d\tau$$
                  </div>
             </div>
 
@@ -97,17 +97,25 @@
                         <label for="min-threshold" class="block text-sm font-medium text-gray-300">Spectrogram Threshold: <span id="min-threshold-val" class="font-mono bg-gray-700 px-2 py-1 rounded">-30 dB</span></label>
                         <input id="min-threshold" type="range" min="-120" max="-20" value="-30" step="1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
                     </div>
-                    <!-- *** NEW: Phase Shift Slider *** -->
                     <div>
                         <label for="phase-shift" class="block text-sm font-medium text-gray-300">Phase Shift (ϕ<sub>0</sub>): <span id="phase-shift-val" class="font-mono bg-gray-700 px-2 py-1 rounded">0 deg</span></label>
                         <input id="phase-shift" type="range" min="0" max="360" value="0" step="1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
                     </div>
+                    <!-- *** CHANGED: Simulation Speed Slider range and step *** -->
+                     <div>
+                        <label for="sim-speed" class="block text-sm font-medium text-gray-300">Simulation Speed: <span id="sim-speed-val" class="font-mono bg-gray-700 px-2 py-1 rounded">1.00x</span></label>
+                        <input id="sim-speed" type="range" min="0.01" max="4" value="1" step="0.01" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
                 </div>
 
-                <!-- Action Button -->
-                <div class="mt-8">
+                <div class="mt-8 grid grid-cols-2 gap-4">
                     <button id="generate-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-500/50">
-                        Generate & Visualize
+                        Generate
+                    </button>
+                     <button id="play-pause-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg focus:outline-none focus:ring-4 focus:ring-green-500/50 flex items-center justify-center">
+                        <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="hidden"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        <span id="play-pause-text" class="ml-2">Play</span>
                     </button>
                 </div>
             </div>
@@ -150,16 +158,21 @@
         const modFreqSlider = document.getElementById('mod-freq');
         const freqDevSlider = document.getElementById('freq-dev');
         const minThresholdSlider = document.getElementById('min-threshold');
-        const phaseShiftSlider = document.getElementById('phase-shift'); // New
+        const phaseShiftSlider = document.getElementById('phase-shift');
+        const simSpeedSlider = document.getElementById('sim-speed');
         const generateBtn = document.getElementById('generate-btn');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playPauseText = document.getElementById('play-pause-text');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
 
         // Value Displays
         const carrierFreqVal = document.getElementById('carrier-freq-val');
         const modFreqVal = document.getElementById('mod-freq-val');
         const freqDevVal = document.getElementById('freq-dev-val');
         const minThresholdVal = document.getElementById('min-threshold-val');
-        const phaseShiftVal = document.getElementById('phase-shift-val'); // New
-
+        const phaseShiftVal = document.getElementById('phase-shift-val');
+        const simSpeedVal = document.getElementById('sim-speed-val');
 
         // Plotting Divs
         const modulatingSignalDiv = document.getElementById('modulating-signal-plot');
@@ -167,58 +180,54 @@
         const qPlotDiv = document.getElementById('q-plot');
         const spectrogramDiv = document.getElementById('spectrogram-plot');
         
-        // --- Core Simulation Parameters ---
+        // --- Core Simulation Parameters & State ---
         const sampleRate = 8000; 
-        const signalDuration = 0.2; // seconds
+        const signalDuration = 0.2;
         const nSamples = sampleRate * signalDuration;
         const time = Array.from({ length: nSamples }, (_, i) => i / sampleRate);
+        
+        let isPlaying = false;
+        let animationFrameId = null;
+        let animationStartTime = 0;
+        const animationWindowDuration = 0.05;
 
         // --- Main Simulation Logic ---
         function generateAndVisualize() {
-            // Get parameters from controls
+            stopAnimation();
+            
             const modType = modTypeSelect.value;
             const fc = parseFloat(carrierFreqSlider.value);
             const fm = parseFloat(modFreqSlider.value);
             const fDev = parseFloat(freqDevSlider.value);
             const minThreshold = parseFloat(minThresholdSlider.value);
-            const phaseShiftDeg = parseFloat(phaseShiftSlider.value); // New
-            const phaseShiftRad = phaseShiftDeg * (Math.PI / 180);   // New
+            const phaseShiftDeg = parseFloat(phaseShiftSlider.value);
+            const phaseShiftRad = phaseShiftDeg * (Math.PI / 180);
 
-            // Generate modulating signal x_m(t)
             let modSignal = new Float32Array(nSamples);
             switch (modType) {
-                case 'sine': // FM
-                    for (let i = 0; i < nSamples; i++) {
-                        modSignal[i] = Math.sin(2 * Math.PI * fm * time[i]);
-                    }
+                case 'sine':
+                    for (let i = 0; i < nSamples; i++) modSignal[i] = Math.sin(2 * Math.PI * fm * time[i]);
                     break;
-                case 'square': // FSK
-                    for (let i = 0; i < nSamples; i++) {
-                        modSignal[i] = Math.sign(Math.sin(2 * Math.PI * fm * time[i]));
-                    }
+                case 'square':
+                    for (let i = 0; i < nSamples; i++) modSignal[i] = Math.sign(Math.sin(2 * Math.PI * fm * time[i]));
                     break;
-                case 'sawtooth': // Chirp
-                    for (let i = 0; i < nSamples; i++) {
-                        modSignal[i] = 2 * ( (time[i] * fm) - Math.floor(0.5 + time[i] * fm) );
-                    }
+                case 'sawtooth':
+                    for (let i = 0; i < nSamples; i++) modSignal[i] = 2 * ( (time[i] * fm) - Math.floor(0.5 + time[i] * fm) );
                     break;
             }
 
-            // --- Complex Baseband Signal Generation ---
             const phase = new Float32Array(nSamples);
-            let currentPhase = 0; // The modulated part of the phase
+            let currentPhase = 0;
             const dt = 1 / sampleRate;
             for (let i = 0; i < nSamples; i++) {
                 const instFreq = fc + fDev * modSignal[i];
                 currentPhase += 2 * Math.PI * instFreq * dt;
-                // Add the constant phase shift at the end
                 phase[i] = currentPhase + phaseShiftRad; 
             }
 
             const I_signal = phase.map(p => Math.cos(p));
             const Q_signal = phase.map(p => Math.sin(p));
 
-            // --- Visualization ---
             updatePlots(time, modSignal, I_signal, Q_signal, fc, fDev, fm, sampleRate, minThreshold);
         }
         
@@ -233,67 +242,48 @@
                 margin: { l: 40, r: 10, b: 30, t: 10, pad: 4 }
             };
 
-            // 1. Modulating Signal Plot
-            const modSignalTrace = {
-                x: t,
-                y: Array.from(modSignal),
-                type: 'scatter',
-                mode: 'lines',
-                line: { color: '#FBBF24' }
-            };
-            Plotly.newPlot(modulatingSignalDiv, [modSignalTrace], baseLayout, {responsive: true});
+            Plotly.newPlot(modulatingSignalDiv, [{ x: t, y: Array.from(modSignal), type: 'scatter', mode: 'lines', line: { color: '#FBBF24' } }], { ...baseLayout, 'xaxis.range': [0, animationWindowDuration]}, {responsive: true});
+            Plotly.newPlot(iPlotDiv, [{ x: t, y: Array.from(I_signal), type: 'scatter', mode: 'lines', line: { color: '#6366F1' } }], { ...baseLayout, 'xaxis.range': [0, animationWindowDuration]}, {responsive: true});
+            Plotly.newPlot(qPlotDiv, [{ x: t, y: Array.from(Q_signal), type: 'scatter', mode: 'lines', line: { color: '#EC4899' } }], { ...baseLayout, 'xaxis.range': [0, animationWindowDuration]}, {responsive: true});
 
-            // 2a. I-Component Time Domain Plot
-            const I_trace = {
-                x: t,
-                y: Array.from(I_signal),
-                name: 'I (In-phase)',
-                type: 'scatter',
-                mode: 'lines',
-                line: { color: '#6366F1' }
-            };
-            Plotly.newPlot(iPlotDiv, [I_trace], baseLayout, {responsive: true});
-
-            // 2b. Q-Component Time Domain Plot
-            const Q_trace = {
-                x: t,
-                y: Array.from(Q_signal),
-                name: 'Q (Quadrature)',
-                type: 'scatter',
-                mode: 'lines',
-                line: { color: '#EC4899' }
-            };
-             Plotly.newPlot(qPlotDiv, [Q_trace], baseLayout, {responsive: true});
-
-
-            // 3. Spectrogram Plot
             const { z, freqs, time_bins } = computeSpectrogram(I_signal, Q_signal, fs, minThreshold, fm);
-            const spectrogramTrace = {
-                z: z,
-                x: time_bins,
-                y: freqs,
-                type: 'heatmap',
-                colorscale: 'Jet',
-                zmin: -120, 
-                zmax: -40,  
-                colorbar: {
-                    title: 'Power/Freq (dB)',
-                    titlefont: { color: '#9CA3AF', size: 10 },
-                    tickfont: { color: '#9CA3AF', size: 8 }
-                }
-            };
-            const spectrogramLayout = {
-                title: false,
-                xaxis: { title: { text: 'Time (s)', font: {size: 10} }, color: '#9CA3AF', gridcolor: '#4B5563', tickfont: {size: 8} },
-                yaxis: { title: { text: 'Frequency (Hz)', font: {size: 10} }, color: '#9CA3AF', gridcolor: '#4B5563', range: [fc - fDev - 400, fc + fDev + 400], tickfont: {size: 8} },
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                margin: { l: 50, r: 10, b: 30, t: 10, pad: 4 }
-            };
+            const spectrogramTrace = { z: z, x: time_bins, y: freqs, type: 'heatmap', colorscale: 'Jet', zmin: -120, zmax: -40, colorbar: { title: 'Power/Freq (dB)', titlefont: { color: '#9CA3AF', size: 10 }, tickfont: { color: '#9CA3AF', size: 8 } } };
+            const spectrogramLayout = { title: false, xaxis: { title: { text: 'Time (s)', font: {size: 10} }, color: '#9CA3AF', gridcolor: '#4B5563', tickfont: {size: 8} }, yaxis: { title: { text: 'Frequency (Hz)', font: {size: 10} }, color: '#9CA3AF', gridcolor: '#4B5563', range: [fc - fDev - 400, fc + fDev + 400], tickfont: {size: 8} }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 50, r: 10, b: 30, t: 10, pad: 4 } };
             Plotly.newPlot(spectrogramDiv, [spectrogramTrace], spectrogramLayout, {responsive: true});
         }
 
-        // --- Utility to shift FFT output ---
+        // --- Animation Functions ---
+        function runAnimation() {
+            if (!isPlaying) return;
+            const speedMultiplier = parseFloat(simSpeedSlider.value);
+            animationStartTime += (1 / 60.0) * speedMultiplier;
+            if (animationStartTime > signalDuration - animationWindowDuration) {
+                animationStartTime = 0;
+            }
+            
+            const endTime = animationStartTime + animationWindowDuration;
+            const layoutUpdate = { 'xaxis.range': [animationStartTime, endTime] };
+
+            Plotly.relayout(modulatingSignalDiv, layoutUpdate);
+            Plotly.relayout(iPlotDiv, layoutUpdate);
+            Plotly.relayout(qPlotDiv, layoutUpdate);
+
+            animationFrameId = requestAnimationFrame(runAnimation);
+        }
+
+        function stopAnimation() {
+             isPlaying = false;
+             animationStartTime = 0;
+             if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+             }
+             playPauseText.textContent = 'Play';
+             playIcon.classList.remove('hidden');
+             pauseIcon.classList.add('hidden');
+        }
+
+        // --- Spectrogram Computation (remains the same) ---
         function fftshift(arr) {
             const n = arr.length;
             const mid = Math.ceil(n / 2);
@@ -304,53 +294,38 @@
             shiftedArr.set(firstHalf, secondHalf.length);
             return shiftedArr;
         }
-
-
-        // --- Spectrogram Computation Helper for Complex Signals ---
         function computeSpectrogram(I_signal, Q_signal, fs, minThreshold, fm) {
             const samplesPerCycle = fs / fm;
             const windowSize = Math.max(32, Math.round(0.1 * samplesPerCycle)); 
             const fftSize = 256; 
             const overlap = Math.max(0, Math.round(windowSize * 0.90)); 
             const hopLength = windowSize - overlap;
-
             const window = new Float32Array(windowSize);
-            
-            for(let i=0; i < windowSize; i++) {
-                window[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (windowSize - 1)));
-            }
-
+            for(let i=0; i < windowSize; i++) window[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (windowSize - 1)));
             const stft = [];
             const time_bins = [];
             for (let i = 0; i + windowSize <= I_signal.length; i += hopLength) {
                 const i_chunk = I_signal.slice(i, i + windowSize);
                 const q_chunk = Q_signal.slice(i, i + windowSize);
-                
                 const i_windowed = i_chunk.map((val, idx) => val * window[idx]);
                 const q_windowed = q_chunk.map((val, idx) => val * window[idx]);
-                
                 const i_padded = new Float32Array(fftSize).fill(0);
                 i_padded.set(i_windowed);
                 const q_padded = new Float32Array(fftSize).fill(0);
                 q_padded.set(q_windowed);
-                
                 const spectrum = getComplexMagnitude(i_padded, q_padded);
                 const shifted_spectrum = fftshift(spectrum);
-
                 stft.push(shifted_spectrum);
                 time_bins.push((i + windowSize / 2) / fs);
             }
-
             const z = [];
             if (stft.length === 0 || stft[0].length === 0) return {z: [], freqs: [], time_bins: []};
             const numFreqBins = stft[0].length;
-            
             for (let i = 0; i < numFreqBins; i++) {
                 z[i] = [];
                 for (let j = 0; j < stft.length; j++) {
                     const power = stft[j][i] ** 2;
                     const db = 10 * Math.log10(power + 1e-12);
-                    
                     if (db < minThreshold) {
                         z[i][j] = -120; 
                     } else {
@@ -358,19 +333,14 @@
                     }
                 }
             }
-            
             const freqs = Array.from({length: fftSize}, (_, i) => -fs/2 + i * (fs / fftSize));
             return { z, freqs, time_bins };
         }
-        
-        // --- DFT for a complex signal ---
         function getComplexMagnitude(chunk_I, chunk_Q) {
             const n = chunk_I.length;
             const mags = new Float32Array(n);
-            
             for(let k = 0; k < n; k++) {
-                let real_sum = 0;
-                let imag_sum = 0;
+                let real_sum = 0, imag_sum = 0;
                 for(let t = 0; t < n; t++) {
                     const angle = 2 * Math.PI * k * t / n;
                     const cos_a = Math.cos(angle);
@@ -385,26 +355,40 @@
 
         // --- Event Listeners ---
         function updateSliderValue(slider, display, unit) {
-            display.textContent = `${slider.value} ${unit}`;
+            let value = parseFloat(slider.value).toFixed(slider.step.includes('.') ? 2 : 0);
+            display.textContent = `${value}${unit}`;
         }
-
-        carrierFreqSlider.addEventListener('input', () => updateSliderValue(carrierFreqSlider, carrierFreqVal, 'Hz'));
-        modFreqSlider.addEventListener('input', () => updateSliderValue(modFreqSlider, modFreqVal, 'Hz'));
-        freqDevSlider.addEventListener('input', () => updateSliderValue(freqDevSlider, freqDevVal, 'Hz'));
-        minThresholdSlider.addEventListener('input', () => updateSliderValue(minThresholdSlider, minThresholdVal, 'dB'));
-        phaseShiftSlider.addEventListener('input', () => updateSliderValue(phaseShiftSlider, phaseShiftVal, 'deg')); // New
+        carrierFreqSlider.addEventListener('input', () => updateSliderValue(carrierFreqSlider, carrierFreqVal, ' Hz'));
+        modFreqSlider.addEventListener('input', () => updateSliderValue(modFreqSlider, modFreqVal, ' Hz'));
+        freqDevSlider.addEventListener('input', () => updateSliderValue(freqDevSlider, freqDevVal, ' Hz'));
+        minThresholdSlider.addEventListener('input', () => updateSliderValue(minThresholdSlider, minThresholdVal, ' dB'));
+        phaseShiftSlider.addEventListener('input', () => updateSliderValue(phaseShiftSlider, phaseShiftVal, ' deg'));
+        simSpeedSlider.addEventListener('input', () => updateSliderValue(simSpeedSlider, simSpeedVal, 'x'));
 
 
         generateBtn.addEventListener('click', generateAndVisualize);
+        
+        playPauseBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if(isPlaying) {
+                playPauseText.textContent = 'Pause';
+                pauseIcon.classList.remove('hidden');
+                playIcon.classList.add('hidden');
+                runAnimation();
+            } else {
+                stopAnimation();
+            }
+        });
 
         // --- Initial Load ---
         window.onload = () => {
              // Set initial display values
-            updateSliderValue(carrierFreqSlider, carrierFreqVal, 'Hz');
-            updateSliderValue(modFreqSlider, modFreqVal, 'Hz');
-            updateSliderValue(freqDevSlider, freqDevVal, 'Hz');
-            updateSliderValue(minThresholdSlider, minThresholdVal, 'dB');
-            updateSliderValue(phaseShiftSlider, phaseShiftVal, 'deg'); // New
+            updateSliderValue(carrierFreqSlider, carrierFreqVal, ' Hz');
+            updateSliderValue(modFreqSlider, modFreqVal, ' Hz');
+            updateSliderValue(freqDevSlider, freqDevVal, ' Hz');
+            updateSliderValue(minThresholdSlider, minThresholdVal, ' dB');
+            updateSliderValue(phaseShiftSlider, phaseShiftVal, ' deg');
+            updateSliderValue(simSpeedSlider, simSpeedVal, 'x');
             // Run simulation
             generateAndVisualize();
         }
