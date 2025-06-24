@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FM, FSK, and Chirp Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .plotly-graph-div {
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-white">FM, FSK, & Chirp Modulation Simulator</h1>
+            <p class="text-lg text-gray-400 mt-2">Explore how different modulating signals affect the frequency spectrum.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Controls Panel -->
+            <div class="lg:col-span-4 bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold mb-6 border-b border-gray-700 pb-3">Controls</h2>
+
+                <!-- Modulation Type -->
+                <div class="mb-6">
+                    <label for="mod-type" class="block text-sm font-medium text-gray-300 mb-2">Modulating Signal</label>
+                    <select id="mod-type" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
+                        <option value="sine" selected>Sine Wave (FM)</option>
+                        <option value="square">Binary Stream (FSK)</option>
+                        <option value="sawtooth">Sawtooth (Chirp)</option>
+                    </select>
+                </div>
+
+                <!-- Parameters -->
+                <div class="space-y-6">
+                    <div>
+                        <label for="carrier-freq" class="block text-sm font-medium text-gray-300">Carrier Frequency (f<sub>c</sub>): <span id="carrier-freq-val" class="font-mono bg-gray-700 px-2 py-1 rounded">1000 Hz</span></label>
+                        <input id="carrier-freq" type="range" min="500" max="4000" value="1000" step="50" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+                    <div>
+                        <label for="mod-freq" class="block text-sm font-medium text-gray-300">Modulating Frequency (f<sub>m</sub>): <span id="mod-freq-val" class="font-mono bg-gray-700 px-2 py-1 rounded">20 Hz</span></label>
+                        <input id="mod-freq" type="range" min="10" max="100" value="20" step="5" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+                    <div>
+                        <label for="freq-dev" class="block text-sm font-medium text-gray-300">Frequency Deviation (Δf): <span id="freq-dev-val" class="font-mono bg-gray-700 px-2 py-1 rounded">400 Hz</span></label>
+                        <input id="freq-dev" type="range" min="50" max="1000" value="400" step="10" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+                    <div>
+                        <label for="min-threshold" class="block text-sm font-medium text-gray-300">Spectrogram Threshold: <span id="min-threshold-val" class="font-mono bg-gray-700 px-2 py-1 rounded">-30 dB</span></label>
+                        <input id="min-threshold" type="range" min="-120" max="-20" value="-30" step="1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="mt-8">
+                    <button id="generate-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-500/50">
+                        Generate & Visualize
+                    </button>
+                </div>
+            </div>
+
+            <!-- Visualizations -->
+            <div class="lg:col-span-8 space-y-8">
+                <div class="bg-gray-800 p-4 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold mb-2 text-center">Modulating Signal</h3>
+                    <div id="modulating-signal-plot"></div>
+                </div>
+                <div class="bg-gray-800 p-4 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold mb-2 text-center">Modulated Signal (Time Domain)</h3>
+                    <div id="time-domain-plot"></div>
+                </div>
+                <div class="bg-gray-800 p-4 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-semibold mb-2 text-center">Spectrogram</h3>
+                    <div id="spectrogram-plot"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // DOM Elements
+        const modTypeSelect = document.getElementById('mod-type');
+        const carrierFreqSlider = document.getElementById('carrier-freq');
+        const modFreqSlider = document.getElementById('mod-freq');
+        const freqDevSlider = document.getElementById('freq-dev');
+        const minThresholdSlider = document.getElementById('min-threshold');
+        const generateBtn = document.getElementById('generate-btn');
+
+        // Value Displays
+        const carrierFreqVal = document.getElementById('carrier-freq-val');
+        const modFreqVal = document.getElementById('mod-freq-val');
+        const freqDevVal = document.getElementById('freq-dev-val');
+        const minThresholdVal = document.getElementById('min-threshold-val');
+
+
+        // Plotting Divs
+        const modulatingSignalDiv = document.getElementById('modulating-signal-plot');
+        const timeDomainDiv = document.getElementById('time-domain-plot');
+        const spectrogramDiv = document.getElementById('spectrogram-plot');
+        
+        // --- Core Simulation Parameters ---
+        const sampleRate = 8000; 
+        const signalDuration = 0.2; // seconds
+        const nSamples = sampleRate * signalDuration;
+        const time = Array.from({ length: nSamples }, (_, i) => i / sampleRate);
+
+        // --- Main Simulation Logic ---
+        function generateAndVisualize() {
+            // Get parameters from controls
+            const modType = modTypeSelect.value;
+            const fc = parseFloat(carrierFreqSlider.value);
+            const fm = parseFloat(modFreqSlider.value);
+            const fDev = parseFloat(freqDevSlider.value);
+            const minThreshold = parseFloat(minThresholdSlider.value);
+
+            // Generate modulating signal x_m(t)
+            let modSignal = new Float32Array(nSamples);
+            switch (modType) {
+                case 'sine': // FM
+                    for (let i = 0; i < nSamples; i++) {
+                        modSignal[i] = Math.sin(2 * Math.PI * fm * time[i]);
+                    }
+                    break;
+                case 'square': // FSK
+                    for (let i = 0; i < nSamples; i++) {
+                        modSignal[i] = Math.sign(Math.sin(2 * Math.PI * fm * time[i]));
+                    }
+                    break;
+                case 'sawtooth': // Chirp
+                    for (let i = 0; i < nSamples; i++) {
+                        // Using triangle wave (0.5) to match MATLAB's sawtooth(t, 0.5)
+                        modSignal[i] = 2 * ( (time[i] * fm) - Math.floor(0.5 + time[i] * fm) );
+                    }
+                    break;
+            }
+
+            // Generate frequency modulated signal y(t)
+            const modulatedSignal = new Float32Array(nSamples);
+            let phase = 0;
+            const dt = 1 / sampleRate;
+            for (let i = 0; i < nSamples; i++) {
+                const instFreq = fc + fDev * modSignal[i];
+                phase += 2 * Math.PI * instFreq * dt;
+                modulatedSignal[i] = Math.cos(phase);
+            }
+
+            // --- Visualization ---
+            updatePlots(time, modSignal, modulatedSignal, fc, fDev, fm, sampleRate, minThreshold);
+        }
+        
+        // --- Plotting Functions ---
+        function updatePlots(t, modSignal, modulatedSignal, fc, fDev, fm, fs, minThreshold) {
+            const plotLayout = {
+                title: false,
+                xaxis: { title: 'Time (s)', color: '#9CA3AF', gridcolor: '#4B5563' },
+                yaxis: { title: 'Amplitude', color: '#9CA3AF', gridcolor: '#4B5563' },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 50, r: 20, b: 40, t: 20 }
+            };
+
+            // 1. Modulating Signal Plot
+            const modSignalTrace = {
+                x: t,
+                y: Array.from(modSignal),
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#FBBF24' }
+            };
+            Plotly.newPlot(modulatingSignalDiv, [modSignalTrace], plotLayout, {responsive: true});
+
+            // 2. Time Domain Plot of Modulated Signal
+            const timeTrace = {
+                x: t, // *** CHANGED: Use full time array for alignment ***
+                y: Array.from(modulatedSignal),
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#6366F1' }
+            };
+            Plotly.newPlot(timeDomainDiv, [timeTrace], plotLayout, {responsive: true});
+
+            // 3. Spectrogram Plot
+            const { z, freqs, time_bins } = computeSpectrogram(modulatedSignal, fs, minThreshold, fm);
+            const spectrogramTrace = {
+                z: z,
+                x: time_bins,
+                y: freqs,
+                type: 'heatmap',
+                colorscale: 'Jet',
+                zmin: -120, 
+                zmax: -40,  
+                colorbar: {
+                    title: 'Power/Freq (dB)',
+                    titlefont: { color: '#9CA3AF' },
+                    tickfont: { color: '#9CA3AF' }
+                }
+            };
+            const spectrogramLayout = {
+                title: false,
+                xaxis: { title: 'Time (s)', color: '#9CA3AF', gridcolor: '#4B5563' },
+                yaxis: { title: 'Frequency (Hz)', color: '#9CA3AF', gridcolor: '#4B5563', range: [Math.max(0, fc - fDev - 200), fc + fDev + 200] },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 60, r: 20, b: 40, t: 20 }
+            };
+            Plotly.newPlot(spectrogramDiv, [spectrogramTrace], spectrogramLayout, {responsive: true});
+        }
+
+        // --- Spectrogram Computation Helper ---
+        function computeSpectrogram(signal, fs, minThreshold, fm) {
+            const samplesPerCycle = fs / fm;
+            const windowSize = Math.max(32, Math.round(0.1 * samplesPerCycle)); 
+            const fftSize = 256; // Reduced from 1024 to better suit the smaller window
+            const overlap = Math.round(windowSize * 0.90); 
+            const hopLength = windowSize - overlap;
+
+            const window = new Float32Array(windowSize);
+            
+            // Hann window to reduce spectral leakage
+            for(let i=0; i < windowSize; i++) {
+                window[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (windowSize - 1)));
+            }
+
+            const stft = [];
+            const time_bins = [];
+            for (let i = 0; i + windowSize <= signal.length; i += hopLength) {
+                const chunk = signal.slice(i, i + windowSize);
+                const windowedChunk = chunk.map((val, idx) => val * window[idx]);
+                
+                const paddedChunk = new Float32Array(fftSize).fill(0);
+                paddedChunk.set(windowedChunk);
+                
+                const spectrum = getMagnitude(paddedChunk);
+                stft.push(spectrum);
+                time_bins.push((i + windowSize / 2) / fs);
+            }
+
+            // Transpose and convert to dB for heatmap
+            const z = [];
+            if (stft.length === 0 || stft[0].length === 0) return {z: [], freqs: [], time_bins: []};
+            const numFreqBins = stft[0].length;
+            
+            for (let i = 0; i < numFreqBins; i++) {
+                z[i] = [];
+                for (let j = 0; j < stft.length; j++) {
+                    const power = stft[j][i] ** 2;
+                    const db = 10 * Math.log10(power + 1e-12);
+                    
+                    // Apply the minimum threshold
+                    if (db < minThreshold) {
+                        z[i][j] = -120; 
+                    } else {
+                        z[i][j] = db;
+                    }
+                }
+            }
+            
+            const freqs = Array.from({length: numFreqBins}, (_, i) => i * fs / fftSize);
+            return { z, freqs, time_bins };
+        }
+        
+        function getMagnitude(chunk) {
+            const n = chunk.length;
+            const mags = new Float32Array(n / 2);
+            const real = new Float32Array(n / 2).fill(0);
+            const imag = new Float32Array(n / 2).fill(0);
+            
+            for(let k = 0; k < n/2; k++) {
+                for(let t = 0; t < n; t++) {
+                    const angle = 2 * Math.PI * k * t / n;
+                    real[k] += chunk[t] * Math.cos(angle);
+                    imag[k] -= chunk[t] * Math.sin(angle);
+                }
+                mags[k] = Math.sqrt(real[k]**2 + imag[k]**2) / n;
+            }
+            return mags;
+        }
+
+        // --- Event Listeners ---
+        function updateSliderValue(slider, display, unit) {
+            display.textContent = `${slider.value} ${unit}`;
+        }
+
+        carrierFreqSlider.addEventListener('input', () => updateSliderValue(carrierFreqSlider, carrierFreqVal, 'Hz'));
+        modFreqSlider.addEventListener('input', () => updateSliderValue(modFreqSlider, modFreqVal, 'Hz'));
+        freqDevSlider.addEventListener('input', () => updateSliderValue(freqDevSlider, freqDevVal, 'Hz'));
+        minThresholdSlider.addEventListener('input', () => updateSliderValue(minThresholdSlider, minThresholdVal, 'dB'));
+
+
+        generateBtn.addEventListener('click', generateAndVisualize);
+
+        // --- Initial Load ---
+        window.onload = () => {
+             // Set initial display values
+            updateSliderValue(carrierFreqSlider, carrierFreqVal, 'Hz');
+            updateSliderValue(modFreqSlider, modFreqVal, 'Hz');
+            updateSliderValue(freqDevSlider, freqDevVal, 'Hz');
+            updateSliderValue(minThresholdSlider, minThresholdVal, 'dB');
+            // Run simulation
+            generateAndVisualize();
+        }
+
+    </script>
+</body>
+</html>
