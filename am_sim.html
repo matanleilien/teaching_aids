@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AM & ASK Simulator (Static)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMeaCssLdsGcjp53xU6S2HTbaCAbT6GYvB8bYmTcG4rjCycP_" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlVwcjNcsNQDbBFxd10eUwenxVLT4egoET/SqVRCgtWv4SRoTic3VFLVn/g" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .plotly-graph-div {
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .katex-display {
+            margin: 0.5em 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-white">AM & ASK Modulation Simulator</h1>
+            <p class="text-lg text-gray-400 mt-2">Explore how different modulating signals affect the signal envelope and spectrum.</p>
+        
+            <!-- Block Diagram -->
+            <div class="mt-8">
+                <svg width="100%" height="100" viewBox="0 0 880 100" class="max-w-4xl mx-auto">
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#9CA3AF" />
+                        </marker>
+                    </defs>
+                    <rect x="50" y="25" width="220" height="50" rx="10" ry="10" fill="#4B5563" stroke="#6B7280" stroke-width="2"></rect>
+                    <text x="160" y="55" font-family="Inter, sans-serif" font-size="14" fill="white" text-anchor="middle">Modulating Signal Gen</text>
+                    <line x1="280" y1="50" x2="350" y2="50" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrowhead)"></line>
+                    <rect x="360" y="25" width="220" height="50" rx="10" ry="10" fill="#4B5563" stroke="#6B7280" stroke-width="2"></rect>
+                    <text x="470" y="55" font-family="Inter, sans-serif" font-size="16" fill="white" text-anchor="middle">AM Modulator</text>
+                    <line x1="590" y1="50" x2="660" y2="50" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrowhead)"></line>
+                    <rect x="670" y="25" width="220" height="50" rx="10" ry="10" fill="#4B5563" stroke="#6B7280" stroke-width="2"></rect>
+                    <text x="780" y="55" font-family="Inter, sans-serif" font-size="14" fill="white" text-anchor="middle">Spectrogram Viewer</text>
+                </svg>
+            </div>
+            
+            <!-- Formula Display -->
+            <div class="mt-6 text-center text-gray-300 space-y-2 max-w-5xl mx-auto bg-gray-800 p-4 rounded-lg">
+                 <p>The complex baseband AM signal $$s(t)$$ is generated using the formula:</p>
+                 <div class="text-lg">
+                    $$s(t) = [1 + k_a m(t)] \cdot e^{j(2\pi f_c t + \phi_0)}$$
+                 </div>
+                 <p>Using Euler's formula, this expands to:</p>
+                 <div class="text-lg">
+                    $$s(t) = [1 + k_a m(t)]\cos(2\pi f_c t + \phi_0) + j[1 + k_a m(t)]\sin(2\pi f_c t + \phi_0)$$
+                 </div>
+            </div>
+
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Controls Panel -->
+            <div class="lg:col-span-4 bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold mb-6 border-b border-gray-700 pb-3">Controls</h2>
+
+                <!-- Modulation Type -->
+                <div class="mb-6">
+                    <label for="mod-type" class="block text-sm font-medium text-gray-300 mb-2">Modulating Signal</label>
+                    <select id="mod-type" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2.5">
+                        <option value="sine" selected>Sine Wave (AM)</option>
+                        <option value="square">Unipolar Square (ASK)</option>
+                    </select>
+                </div>
+
+                <!-- Parameters -->
+                <div class="space-y-6">
+                    <div>
+                        <label for="carrier-freq" class="block text-sm font-medium text-gray-300">Carrier Frequency (f<sub>c</sub>): <span id="carrier-freq-val" class="font-mono bg-gray-700 px-2 py-1 rounded">0 Hz</span></label>
+                        <input id="carrier-freq" type="range" min="-2000" max="2000" value="0" step="50" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+                    <div>
+                        <label for="mod-freq" class="block text-sm font-medium text-gray-300">Modulating Frequency (f<sub>m</sub>): <span id="mod-freq-val" class="font-mono bg-gray-700 px-2 py-1 rounded">20 Hz</span></label>
+                        <input id="mod-freq" type="range" min="10" max="100" value="20" step="5" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+                    <div>
+                        <label for="mod-index" class="block text-sm font-medium text-gray-300">Modulation Index (k<sub>a</sub>): <span id="mod-index-val" class="font-mono bg-gray-700 px-2 py-1 rounded">0.8</span></label>
+                        <input id="mod-index" type="range" min="0" max="2" value="0.8" step="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+                    <div>
+                        <label for="min-threshold" class="block text-sm font-medium text-gray-300">Spectrogram Threshold: <span id="min-threshold-val" class="font-mono bg-gray-700 px-2 py-1 rounded">-80 dB</span></label>
+                        <input id="min-threshold" type="range" min="-120" max="-20" value="-80" step="1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+                    <div>
+                        <label for="phase-shift" class="block text-sm font-medium text-gray-300">Phase Shift (ϕ<sub>0</sub>): <span id="phase-shift-val" class="font-mono bg-gray-700 px-2 py-1 rounded">0 deg</span></label>
+                        <input id="phase-shift" type="range" min="0" max="360" value="0" step="1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer mt-2">
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <button id="generate-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-500/50">
+                        Generate & Visualize
+                    </button>
+                </div>
+            </div>
+
+            <!-- Visualizations -->
+            <div class="lg:col-span-8 grid grid-rows-4 grid-cols-2 gap-4" style="height: 85vh;">
+                <div class="bg-gray-800 p-2 rounded-xl shadow-lg row-span-2 flex flex-col">
+                    <h3 class="text-md font-semibold text-center flex-shrink-0 py-1">Modulating Signal</h3>
+                    <div id="modulating-signal-plot" class="flex-grow min-h-0"></div>
+                </div>
+                <div class="bg-gray-800 p-2 rounded-xl shadow-lg flex flex-col">
+                    <h3 class="text-md font-semibold text-center flex-shrink-0 py-1">In-phase Component (I)</h3>
+                    <div id="i-plot" class="flex-grow min-h-0"></div>
+                </div>
+                <div class="bg-gray-800 p-2 rounded-xl shadow-lg flex flex-col">
+                    <h3 class="text-md font-semibold text-center flex-shrink-0 py-1">Quadrature Component (Q)</h3>
+                    <div id="q-plot" class="flex-grow min-h-0"></div>
+                </div>
+                <div class="bg-gray-800 p-2 rounded-xl shadow-lg col-span-2 row-span-2 flex flex-col">
+                    <h3 class="text-md font-semibold text-center flex-shrink-0 py-1">Spectrogram</h3>
+                    <div id="spectrogram-plot" class="flex-grow min-h-0"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+         document.addEventListener("DOMContentLoaded", function() {
+            try {
+                renderMathInElement(document.body, {
+                  delimiters: [
+                      {left: '$$', right: '$$', display: true},
+                      {left: '$', right: '$', display: false}
+                  ]
+                });
+            } catch (e) {
+                console.error("KaTeX rendering failed: ", e);
+            }
+        });
+        
+        // DOM Elements
+        const modTypeSelect = document.getElementById('mod-type');
+        const carrierFreqSlider = document.getElementById('carrier-freq');
+        const modFreqSlider = document.getElementById('mod-freq');
+        const modIndexSlider = document.getElementById('mod-index');
+        const minThresholdSlider = document.getElementById('min-threshold');
+        const phaseShiftSlider = document.getElementById('phase-shift');
+        const generateBtn = document.getElementById('generate-btn');
+
+        // Value Displays
+        const carrierFreqVal = document.getElementById('carrier-freq-val');
+        const modFreqVal = document.getElementById('mod-freq-val');
+        const modIndexVal = document.getElementById('mod-index-val');
+        const minThresholdVal = document.getElementById('min-threshold-val');
+        const phaseShiftVal = document.getElementById('phase-shift-val');
+
+        // Plotting Divs
+        const modulatingSignalDiv = document.getElementById('modulating-signal-plot');
+        const iPlotDiv = document.getElementById('i-plot');
+        const qPlotDiv = document.getElementById('q-plot');
+        const spectrogramDiv = document.getElementById('spectrogram-plot');
+        
+        // --- Core Simulation Parameters ---
+        const sampleRate = 8000; 
+        const signalDuration = 0.2;
+        const nSamples = sampleRate * signalDuration;
+        const time = Array.from({ length: nSamples }, (_, i) => i / sampleRate);
+        
+        // --- Main Simulation Logic ---
+        function generateAndVisualize() {
+            const modType = modTypeSelect.value;
+            const fc = parseFloat(carrierFreqSlider.value);
+            const fm = parseFloat(modFreqSlider.value);
+            const ka = parseFloat(modIndexSlider.value);
+            const minThreshold = parseFloat(minThresholdSlider.value);
+            const phaseShiftDeg = parseFloat(phaseShiftSlider.value);
+            const phaseShiftRad = phaseShiftDeg * (Math.PI / 180);
+
+            let modSignal = new Float32Array(nSamples);
+            switch (modType) {
+                case 'sine': // AM
+                    for (let i = 0; i < nSamples; i++) modSignal[i] = Math.sin(2 * Math.PI * fm * time[i]);
+                    break;
+                case 'square': // ASK (Unipolar 0 to 1)
+                    for (let i = 0; i < nSamples; i++) {
+                        modSignal[i] = (Math.sign(Math.sin(2 * Math.PI * fm * time[i])) + 1) / 2;
+                    }
+                    break;
+            }
+
+            const amplitude = modSignal.map(m => 1 + ka * m);
+            
+            const phase = new Float32Array(nSamples);
+            for (let i = 0; i < nSamples; i++) {
+                phase[i] = 2 * Math.PI * fc * time[i] + phaseShiftRad; 
+            }
+
+            const I_signal = phase.map((p, i) => amplitude[i] * Math.cos(p));
+            const Q_signal = phase.map((p, i) => amplitude[i] * Math.sin(p));
+
+            updatePlots(time, modSignal, I_signal, Q_signal, fc, fm, sampleRate, minThreshold);
+        }
+        
+        // --- Plotting Functions ---
+        function updatePlots(t, modSignal, I_signal, Q_signal, fc, fm, fs, minThreshold) {
+            const baseLayout = {
+                title: false,
+                xaxis: { title: { text: 'Time (s)', font: {size: 10} }, color: '#9CA3AF', gridcolor: '#4B5563', tickfont: {size: 8} },
+                yaxis: { title: { text: 'Amplitude', font: {size: 10} }, color: '#9CA3AF', gridcolor: '#4B5563', tickfont: {size: 8} },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 40, r: 10, b: 30, t: 10, pad: 4 }
+            };
+
+            Plotly.newPlot(modulatingSignalDiv, [{ x: t, y: Array.from(modSignal), type: 'scatter', mode: 'lines', line: { color: '#FBBF24' } }], baseLayout, {responsive: true});
+            Plotly.newPlot(iPlotDiv, [{ x: t, y: Array.from(I_signal), type: 'scatter', mode: 'lines', line: { color: '#6366F1' } }], baseLayout, {responsive: true});
+            Plotly.newPlot(qPlotDiv, [{ x: t, y: Array.from(Q_signal), type: 'scatter', mode: 'lines', line: { color: '#EC4899' } }], baseLayout, {responsive: true});
+
+            const { z, freqs, time_bins } = computeSpectrogram(I_signal, Q_signal, fs, minThreshold, fm);
+            const spectrogramTrace = { z: z, x: time_bins, y: freqs, type: 'heatmap', colorscale: 'Jet', zmin: -120, zmax: -20, colorbar: { title: 'Power/Freq (dB)', titlefont: { color: '#9CA3AF', size: 10 }, tickfont: { color: '#9CA3AF', size: 8 } } };
+            
+            // *** CHANGED: Removed the 'range' property from yaxis ***
+            const spectrogramLayout = { title: false, xaxis: { title: { text: 'Time (s)', font: {size: 10} }, color: '#9CA3AF', gridcolor: '#4B5563', tickfont: {size: 8} }, yaxis: { title: { text: 'Frequency (Hz)', font: {size: 10} }, color: '#9CA3AF', gridcolor: '#4B5563', tickfont: {size: 8} }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', margin: { l: 50, r: 10, b: 30, t: 10, pad: 4 } };
+            Plotly.newPlot(spectrogramDiv, [spectrogramTrace], spectrogramLayout, {responsive: true});
+        }
+
+        // --- Spectrogram Computation ---
+        function fftshift(arr) {
+            const n = arr.length;
+            const mid = Math.ceil(n / 2);
+            const shiftedArr = new Float32Array(n);
+            const secondHalf = arr.slice(mid);
+            shiftedArr.set(secondHalf, 0);
+            const firstHalf = arr.slice(0, mid);
+            shiftedArr.set(firstHalf, secondHalf.length);
+            return shiftedArr;
+        }
+        function computeSpectrogram(I_signal, Q_signal, fs, minThreshold, fm) {
+            const samplesPerCycle = fs / fm;
+            const windowSize = Math.max(32, Math.round(0.1 * samplesPerCycle)); 
+            const fftSize = 256;
+            const overlap = Math.round(windowSize * 0.90); 
+            const hopLength = windowSize - overlap;
+            const window = new Float32Array(windowSize);
+            for(let i=0; i < windowSize; i++) window[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (windowSize - 1)));
+            const stft = [];
+            const time_bins = [];
+            for (let i = 0; i + windowSize <= I_signal.length; i += hopLength) {
+                const i_chunk = I_signal.slice(i, i + windowSize);
+                const q_chunk = Q_signal.slice(i, i + windowSize);
+                const i_windowed = i_chunk.map((val, idx) => val * window[idx]);
+                const q_windowed = q_chunk.map((val, idx) => val * window[idx]);
+                const i_padded = new Float32Array(fftSize).fill(0);
+                i_padded.set(i_windowed);
+                const q_padded = new Float32Array(fftSize).fill(0);
+                q_padded.set(q_windowed);
+                const spectrum = getComplexMagnitude(i_padded, q_padded);
+                const shifted_spectrum = fftshift(spectrum);
+                stft.push(shifted_spectrum);
+                time_bins.push((i + windowSize / 2) / fs);
+            }
+            const z = [];
+            if (stft.length === 0 || stft[0].length === 0) return {z: [], freqs: [], time_bins: []};
+            const numFreqBins = stft[0].length;
+            for (let i = 0; i < numFreqBins; i++) {
+                z[i] = [];
+                for (let j = 0; j < stft.length; j++) {
+                    const power = stft[j][i] ** 2;
+                    const db = 10 * Math.log10(power + 1e-12);
+                    if (db < minThreshold) {
+                        z[i][j] = -120; 
+                    } else {
+                        z[i][j] = db;
+                    }
+                }
+            }
+            const freqs = Array.from({length: fftSize}, (_, i) => -fs/2 + i * (fs / fftSize));
+            return { z, freqs, time_bins };
+        }
+        function getComplexMagnitude(chunk_I, chunk_Q) {
+            const n = chunk_I.length;
+            const mags = new Float32Array(n);
+            for(let k = 0; k < n; k++) {
+                let real_sum = 0, imag_sum = 0;
+                for(let t = 0; t < n; t++) {
+                    const angle = 2 * Math.PI * k * t / n;
+                    const cos_a = Math.cos(angle);
+                    const sin_a = Math.sin(angle);
+                    real_sum += chunk_I[t] * cos_a + chunk_Q[t] * sin_a;
+                    imag_sum += -chunk_I[t] * sin_a + chunk_Q[t] * cos_a;
+                }
+                mags[k] = Math.sqrt(real_sum**2 + imag_sum**2) / n;
+            }
+            return mags;
+        }
+
+        // --- Event Listeners ---
+        function updateSliderValue(slider, display, unit) {
+            let value = parseFloat(slider.value).toFixed(slider.step.includes('.') ? 2 : 0);
+            display.textContent = `${value}${unit}`;
+        }
+        carrierFreqSlider.addEventListener('input', () => updateSliderValue(carrierFreqSlider, carrierFreqVal, ' Hz'));
+        modFreqSlider.addEventListener('input', () => updateSliderValue(modFreqSlider, modFreqVal, ' Hz'));
+        modIndexSlider.addEventListener('input', () => updateSliderValue(modIndexSlider, modIndexVal, ''));
+        minThresholdSlider.addEventListener('input', () => updateSliderValue(minThresholdSlider, minThresholdVal, ' dB'));
+        phaseShiftSlider.addEventListener('input', () => updateSliderValue(phaseShiftSlider, phaseShiftVal, ' deg'));
+        
+        generateBtn.addEventListener('click', generateAndVisualize);
+        
+        // --- Initial Load ---
+        window.onload = () => {
+            updateSliderValue(carrierFreqSlider, carrierFreqVal, ' Hz');
+            updateSliderValue(modFreqSlider, modFreqVal, ' Hz');
+            updateSliderValue(modIndexSlider, modIndexVal, '');
+            updateSliderValue(minThresholdSlider, minThresholdVal, ' dB');
+            updateSliderValue(phaseShiftSlider, phaseShiftVal, ' deg');
+            generateAndVisualize();
+        }
+
+    </script>
+</body>
+</html>
