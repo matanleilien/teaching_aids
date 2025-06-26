@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pulse Modulation & Shaping Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            height: 40vh;
+            width: 100%;
+        }
+        /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 antialiased">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-cyan-400">Digital Communications Simulator</h1>
+            <p class="text-lg text-gray-400 mt-2">Explore Pulse Modulation & Pulse Shaping</p>
+        </header>
+
+        <!-- Controls Section -->
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                <!-- Modulation Scheme -->
+                <div>
+                    <label for="modulation" class="block text-sm font-medium text-gray-300 mb-2">Modulation Scheme</label>
+                    <select id="modulation" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-cyan-500 focus:border-cyan-500 p-2.5">
+                        <option value="BPSK">BPSK</option>
+                        <option value="QPSK">QPSK</option>
+                        <option value="OQPSK" selected>OQPSK</option>
+                        <option value="8PSK">8PSK</option>
+                        <option value="ASK">4-ASK</option>
+                    </select>
+                </div>
+                <!-- Pulse Shape -->
+                <div>
+                    <label for="pulseShape" class="block text-sm font-medium text-gray-300 mb-2">Pulse Shape</label>
+                    <select id="pulseShape" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-cyan-500 focus:border-cyan-500 p-2.5">
+                        <option value="Rectangular">Rectangular</option>
+                        <option value="RC" selected>Raised-Cosine</option>
+                        <option value="Half-Sine">Half-Sine</option>
+                    </select>
+                </div>
+                <!-- Samples per Symbol -->
+                <div>
+                    <label for="samplesPerSymbol" class="block text-sm font-medium text-gray-300 mb-2">Samples / Symbol</label>
+                    <input type="number" id="samplesPerSymbol" value="16" min="4" step="2" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-cyan-500 focus:border-cyan-500 p-2.5">
+                </div>
+                <!-- Generate Button -->
+                <div>
+                    <button id="generateBtn" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2.5 px-6 rounded-lg transition-transform transform hover:scale-105 shadow-md">
+                        Generate
+                    </button>
+                </div>
+            </div>
+            <!-- RC Specific Controls -->
+            <div id="rcControls" class="mt-6 pt-4 border-t border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div>
+                    <label for="rcAlpha" class="block text-sm font-medium text-gray-300 mb-2">Roll-off Factor (α): <span id="rcAlphaValue" class="font-mono text-cyan-400">0.35</span></label>
+                    <input type="range" id="rcAlpha" min="0.05" max="1.0" value="0.35" step="0.05" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                </div>
+                <div>
+                    <label for="filterSpan" class="block text-sm font-medium text-gray-300 mb-2">Filter Span (Symbols)</label>
+                    <input type="number" id="filterSpan" value="4" min="2" step="2" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-cyan-500 focus:border-cyan-500 p-2.5">
+                </div>
+            </div>
+        </div>
+
+        <!-- Plots Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Constellation -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold text-center mb-4">IQ Constellation Diagram</h2>
+                <div class="chart-container">
+                    <canvas id="constellationChart"></canvas>
+                </div>
+            </div>
+            <!-- Individual Pulses -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold text-center mb-4">Individual Pulse Waveforms</h2>
+                <div class="chart-container">
+                    <canvas id="individualWaveformChart"></canvas>
+                </div>
+            </div>
+            <!-- Summed I/Q -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold text-center mb-4">Summed I & Q Waveforms</h2>
+                <div class="chart-container">
+                    <canvas id="summedWaveformChart"></canvas>
+                </div>
+            </div>
+            <!-- Power -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold text-center mb-4">Power vs. Time</h2>
+                <div class="chart-container">
+                    <canvas id="powerChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="text-center mt-8 text-gray-500">
+            <p>Built with ❤️ and JavaScript</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- Global Chart References ---
+        let constellationChart = null;
+        let individualWaveformChart = null;
+        let summedWaveformChart = null;
+        let powerChart = null;
+        
+        // --- Simulation Parameters ---
+        const PARAMS = {
+            numSymbols: 500,
+            pulsesToDisplay: 10,
+        };
+
+        /**
+         * Generates an array of complex symbols.
+         */
+        function generateSymbols(modulationScheme, numSymbols) {
+            let symbols = [];
+            for (let i = 0; i < numSymbols; i++) {
+                let symbol = { re: 0, im: 0 };
+                if (modulationScheme === 'BPSK') {
+                    const bit = Math.round(Math.random());
+                    symbol.re = 2 * bit - 1;
+                } else if (modulationScheme === 'QPSK' || modulationScheme === 'OQPSK') {
+                    const bits = Math.floor(Math.random() * 4);
+                    const angle = bits * Math.PI / 2 + Math.PI / 4;
+                    symbol.re = Math.cos(angle);
+                    symbol.im = Math.sin(angle);
+                } else if (modulationScheme === '8PSK') {
+                    const bits = Math.floor(Math.random() * 8);
+                    const angle = bits * Math.PI / 4;
+                    symbol.re = Math.cos(angle);
+                    symbol.im = Math.sin(angle);
+                } else if (modulationScheme === 'ASK') { // 4-ASK
+                    const bits = Math.floor(Math.random() * 4);
+                    const M = 4;
+                    symbol.re = (2*bits - (M-1)) / (M-1); // Normalized
+                }
+                symbols.push(symbol);
+            }
+            return symbols;
+        }
+
+        /**
+         * Creates the impulse response for a specified pulse shape.
+         */
+        function createPulseShape(shape, samplesPerSymbol, options = {}) {
+            let pulse;
+            if (shape === 'Rectangular') {
+                pulse = new Array(samplesPerSymbol).fill(1);
+            } else if (shape === 'RC') {
+                const alpha = options.alpha || 0.35;
+                const filterSpan = options.filterSpan || 4;
+                const T = samplesPerSymbol;
+                const num_taps = filterSpan * T + 1;
+                let t_vals = Array.from({length: num_taps}, (_, i) => i - Math.floor(num_taps / 2));
+                pulse = t_vals.map(t_raw => {
+                    const t = t_raw / T;
+                    if (t === 0) return 1.0;
+                    if (alpha !== 0 && Math.abs(t) === 1 / (2 * alpha)) {
+                        return (Math.PI / 4) * (Math.sin(Math.PI / (2 * alpha)) / (Math.PI / (2 * alpha)));
+                    }
+                    return (Math.sin(Math.PI * t) / (Math.PI * t)) * (Math.cos(Math.PI * alpha * t) / (1 - (2 * alpha * t)**2));
+                });
+            } else if (shape === 'Half-Sine') {
+                pulse = Array.from({length: samplesPerSymbol}, (_, i) => Math.sin(Math.PI * i / samplesPerSymbol));
+            } else {
+                 pulse = new Array(samplesPerSymbol).fill(0);
+            }
+             // Normalize pulse energy
+            const energy = pulse.reduce((sum, val) => sum + val*val, 0);
+            return pulse.map(p => p / Math.sqrt(energy));
+        }
+        
+        /**
+         * Generates a list of distinct colors for plotting.
+         */
+        function generateColors(count) {
+            const colors = [];
+            const saturation = 90;
+            const lightness = 60;
+            for(let i = 0; i < count; i++) {
+                const hue = (i * (360 / (count+1))) % 360;
+                colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
+            }
+            return colors;
+        }
+
+        /**
+         * Main simulation function. Gathers parameters, generates data, and updates plots.
+         */
+        function runSimulation() {
+            const modulation = document.getElementById('modulation').value;
+            const pulseShapeName = document.getElementById('pulseShape').value;
+            const samplesPerSymbol = parseInt(document.getElementById('samplesPerSymbol').value, 10);
+            const rcAlpha = parseFloat(document.getElementById('rcAlpha').value);
+            const filterSpan = parseInt(document.getElementById('filterSpan').value, 10);
+            
+            // 1. Generate symbols
+            const symbols = generateSymbols(modulation, PARAMS.numSymbols);
+            
+            // 2. Create pulse shape
+            const pulse = createPulseShape(pulseShapeName, samplesPerSymbol, { alpha: rcAlpha, filterSpan: filterSpan });
+
+            // 3. Create the final signal by summing scaled and shifted pulses
+            const totalSignalLength = (PARAMS.numSymbols + filterSpan) * samplesPerSymbol;
+            let summed_i = new Array(totalSignalLength).fill(0);
+            let summed_q = new Array(totalSignalLength).fill(0);
+            let individual_pulses = [];
+            const q_delay = (modulation === 'OQPSK') ? Math.floor(samplesPerSymbol / 2) : 0;
+
+            for (let i = 0; i < PARAMS.numSymbols; i++) {
+                const symbol = symbols[i];
+                const i_start_index = i * samplesPerSymbol;
+                const q_start_index = i_start_index + q_delay;
+
+                // Add the current shaped pulse to the summed signal
+                for (let k = 0; k < pulse.length; k++) {
+                    if (i_start_index + k < totalSignalLength) {
+                        summed_i[i_start_index + k] += symbol.re * pulse[k];
+                    }
+                    if (q_start_index + k < totalSignalLength) {
+                        summed_q[q_start_index + k] += symbol.im * pulse[k];
+                    }
+                }
+                
+                // Store the first few individual pulses for plotting
+                if (i < PARAMS.pulsesToDisplay) {
+                    let p_i = new Array(totalSignalLength).fill(NaN); // Use NaN to create gaps
+                    let p_q = new Array(totalSignalLength).fill(NaN);
+                    for(let k=0; k<pulse.length; k++){
+                        if (i_start_index + k < totalSignalLength) p_i[i_start_index + k] = symbol.re * pulse[k];
+                        if (q_start_index + k < totalSignalLength) p_q[q_start_index + k] = symbol.im * pulse[k];
+                    }
+                    individual_pulses.push({ i: p_i, q: p_q });
+                }
+            }
+            
+            // 4. Calculate power
+            const power = summed_i.map((val, index) => val**2 + summed_q[index]**2);
+            
+            // 5. Plot results
+            const samplesToShow = PARAMS.pulsesToDisplay * samplesPerSymbol + (pulseShapeName === 'RC' ? filterSpan * samplesPerSymbol : samplesPerSymbol);
+            plotConstellation(summed_i, summed_q);
+            plotIndividualWaveforms(individual_pulses, samplesToShow);
+            plotSummedWaveform(summed_i, summed_q, samplesToShow);
+            plotPower(power, samplesToShow);
+        }
+        
+        function plotChart(canvasId, chartInstance, config) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            return new Chart(ctx, config);
+        }
+
+        function getCommonChartOptions(xLabel, yLabel) {
+            return {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                     x: { title: { display: true, text: xLabel, color: '#9ca3af' }, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#9ca3af' } },
+                     y: { title: { display: true, text: yLabel, color: '#9ca3af' }, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#9ca3af' }, afterFit: (s) => { s.width = 60; } }
+                }
+            };
+        }
+
+        function plotIndividualWaveforms(pulses, samplesToShow) {
+            const labels = Array.from({length: samplesToShow}, (_, i) => i);
+            const colors = generateColors(pulses.length * 2);
+
+            let datasets = [];
+            pulses.forEach((p, index) => {
+                datasets.push({
+                    label: `Pulse ${index+1} (I)`, data: p.i.slice(0, samplesToShow), borderColor: colors[index], borderWidth: 1.5, pointRadius: 0, tension: 0.1, spanGaps: true
+                });
+                datasets.push({
+                    label: `Pulse ${index+1} (Q)`, data: p.q.slice(0, samplesToShow), borderColor: colors[index + pulses.length], borderWidth: 1.5, borderDash: [5, 5], pointRadius: 0, tension: 0.1, spanGaps: true
+                });
+            });
+
+            const options = getCommonChartOptions('Sample Index', 'Amplitude');
+            options.plugins = { legend: { display: false } };
+            individualWaveformChart = plotChart('individualWaveformChart', individualWaveformChart, {type: 'line', data: { labels, datasets }, options});
+        }
+
+        function plotSummedWaveform(i_data, q_data, samplesToShow) {
+            const labels = Array.from({length: samplesToShow}, (_, i) => i);
+            const datasets = [
+                { label: 'Summed I', data: i_data.slice(0, samplesToShow), borderColor: 'rgba(56, 189, 248, 1)', borderWidth: 2, pointRadius: 0, tension: 0.1 },
+                { label: 'Summed Q', data: q_data.slice(0, samplesToShow), borderColor: 'rgba(236, 72, 153, 1)', borderWidth: 2, pointRadius: 0, tension: 0.1 }
+            ];
+            const options = getCommonChartOptions('Sample Index', 'Amplitude');
+            options.plugins = { legend: { labels: { color: '#d1d5db' } } };
+            summedWaveformChart = plotChart('summedWaveformChart', summedWaveformChart, {type: 'line', data: { labels, datasets }, options});
+        }
+
+        function plotPower(power_data, samplesToShow) {
+            const labels = Array.from({length: samplesToShow}, (_, i) => i);
+            const datasets = [{
+                label: 'Instantaneous Power', data: power_data.slice(0, samplesToShow), borderColor: 'rgba(251, 191, 36, 1)', borderWidth: 2, pointRadius: 0, tension: 0.1
+            }];
+            const options = getCommonChartOptions('Sample Index', 'Power (I² + Q²)');
+            options.scales.y.beginAtZero = true;
+            options.plugins = { legend: { labels: { color: '#d1d5db' } } };
+            powerChart = plotChart('powerChart', powerChart, { type: 'line', data: { labels, datasets }, options });
+        }
+        
+        function plotConstellation(i_data, q_data) {
+            const dataPoints = i_data.map((val, index) => ({ x: val, y: q_data[index] }));
+            const datasets = [{
+                data: dataPoints, backgroundColor: 'rgba(56, 189, 248, 0.7)', pointRadius: 2, pointHoverRadius: 4
+            }];
+            const options = getCommonChartOptions('In-Phase (I)', 'Quadrature (Q)');
+            options.aspectRatio = 1;
+            options.plugins = {
+                legend: { display: false },
+                tooltip: { callbacks: { label: (c) => `(I: ${c.parsed.x.toFixed(2)}, Q: ${c.parsed.y.toFixed(2)})` } }
+            };
+            constellationChart = plotChart('constellationChart', constellationChart, { type: 'scatter', data: { datasets }, options });
+        }
+        
+        function updateRCControlsVisibility() {
+            const pulseShape = document.getElementById('pulseShape').value;
+            const rcControls = document.getElementById('rcControls');
+            rcControls.style.display = pulseShape === 'RC' ? 'grid' : 'none';
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('generateBtn').addEventListener('click', runSimulation);
+        document.getElementById('pulseShape').addEventListener('change', updateRCControlsVisibility);
+        document.getElementById('rcAlpha').addEventListener('input', (e) => {
+            document.getElementById('rcAlphaValue').textContent = parseFloat(e.target.value).toFixed(2);
+        });
+
+        // --- Initial Load ---
+        window.onload = () => {
+            updateRCControlsVisibility();
+            runSimulation();
+        };
+    </script>
+</body>
+</html>
