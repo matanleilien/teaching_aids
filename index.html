@@ -3,40 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teaching Aids</title>
+    <title>Wireless Communication Simulators</title>
     <style>
         body {
-            font-family: sans-serif;
-            margin: 40px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: #121826;
+            color: #F9FAFB;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
-        h1 {
-            color: #333;
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
         }
-        ul {
-            list-style-type: none;
-            padding: 0;
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #FFFFFF;
+            font-weight: 700;
+            margin-bottom: 8px;
         }
-        li {
-            margin-bottom: 10px;
+
+        .header p {
+            font-size: 1.125rem;
+            color: #9CA3AF; /* A light gray for the subtitle */
+            max-width: 600px;
         }
-        a {
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background-color: #1F2937; /* A slightly lighter dark shade for cards */
+            border: 1px solid #374151; /* Subtle border */
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #FFFFFF;
+        }
+
+        .card p {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #D1D5DB; /* A lighter gray for card text */
+            flex-grow: 1;
+            margin-bottom: 24px;
+        }
+
+        .card-button {
+            display: inline-block;
+            background-color: #4F46E5; /* The vibrant purple-blue from the screenshot */
+            color: #FFFFFF;
             text-decoration: none;
-            color: #0066cc;
-            font-size: 1.2em;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            transition: background-color 0.2s ease;
         }
-        a:hover {
-            text-decoration: underline;
+
+        .card-button:hover {
+            background-color: #4338CA; /* A slightly darker shade for hover */
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: auto;
+            color: #9CA3AF;
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            .grid-container {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Teaching Aids</h1>
-    <ul>
-        <li><a href="am_sim.html">AM Simulator</a></li>
-        <li><a href="capacity_explorer.html">Channel Capacity Explorer</a></li>
-        <li><a href="fm_sim.html">FM Simulator</a></li>
-        <li><a href="multipath_simulator.html">Multipath Simulator</a></li>
-        <li><a href="OOK_sim/index.html">OOK Simulator</a></li>
-    </ul>
+
+    <header class="header">
+        <h1>Wireless Communication Simulators</h1>
+        <p>Interactive tools for exploring key concepts in wireless engineering.</p>
+    </header>
+
+    <main class="grid-container">
+        
+        <div class="card">
+            <h2>Multipath & Doppler Simulator</h2>
+            <p>Visualize how multipath interference, phase shifts, and Doppler effects combine to create signal fading in a wireless channel.</p>
+            <a href="multipath_simulator.html" class="card-button">Launch Simulator</a>
+        </div>
+        
+        <div class="card">
+            <h2>Channel Capacity Explorer</h2>
+            <p>Explore the Shannon-Hartley theorem. See how bandwidth and Signal-to-Noise Ratio (SNR) impact the maximum data rate of a channel.</p>
+            <a href="capacity_explorer.html" class="card-button">Launch Simulator</a>
+        </div>
+        
+        <div class="card">
+            <h2>Pulse Shape Simulator</h2>
+            <p>Understand the effect of different pulse shaping filters on signal integrity and inter-symbol interference (ISI).</p>
+            <a href="pulse_shape_sim.html" class="card-button">Launch Simulator</a>
+        </div>
+
+        <div class="card">
+            <h2>OQPSK / MSK Simulator</h2>
+            <p>Analyze Offset Quadrature Phase-Shift Keying and Minimum Shift Keying, two important digital modulation schemes.</p>
+            <a href="oqpsk_msk.html" class="card-button">Launch Simulator</a>
+        </div>
+        
+        <div class="card">
+            <h2>On-Off Keying (OOK) Sim</h2>
+            <p>Learn about the simplest form of amplitude-shift keying (ASK) modulation, where data is represented by the presence or absence of a carrier wave.</p>
+            <a href="OOK_sim/" class="card-button">Launch Simulator</a>
+        </div>
+
+        <div class="card">
+            <h2>Amplitude Modulation (AM) Sim</h2>
+            <p>Explore Amplitude Modulation, a fundamental analog modulation technique used in broadcasting and communication.</p>
+            <a href="am_sim.html" class="card-button">Launch Simulator</a>
+        </div>
+        
+        <div class="card">
+            <h2>Frequency Modulation (FM) Sim</h2>
+            <p>Discover Frequency Modulation and its properties, including its resilience to noise compared to AM.</p>
+            <a href="fm_sim.html" class="card-button">Launch Simulator</a>
+        </div>
+
+    </main>
+
+    <footer class="footer">
+        <p>Created by Matan Leilien. Hosted on GitHub Pages.</p>
+    </footer>
+
 </body>
+</html>
 </html>
