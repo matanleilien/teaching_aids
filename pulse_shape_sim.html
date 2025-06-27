@@ -13,7 +13,7 @@
         }
         .chart-container {
             position: relative;
-            height: 40vh;
+            height: 35vh; /* Reduced height to make layout more compact */
             width: 100%;
         }
         /* Hide number input arrows */
@@ -29,14 +29,14 @@
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased">
 
-    <div class="container mx-auto p-4 md:p-8">
-        <header class="text-center mb-8">
+    <div class="container mx-auto p-4 md:p-6">
+        <header class="text-center mb-6">
             <h1 class="text-3xl md:text-4xl font-bold text-cyan-400">Digital Communications Simulator</h1>
             <p class="text-lg text-gray-400 mt-2">Explore Pulse Modulation & Pulse Shaping</p>
         </header>
 
         <!-- Controls Section -->
-        <div class="bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+        <div class="bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
                 <!-- Modulation Scheme -->
                 <div>
@@ -47,6 +47,8 @@
                         <option value="OQPSK" selected>OQPSK</option>
                         <option value="8PSK">8PSK</option>
                         <option value="ASK">4-ASK</option>
+                        <option value="16-QAM">16-QAM</option>
+                        <option value="64-QAM">64-QAM</option>
                     </select>
                 </div>
                 <!-- Pulse Shape -->
@@ -70,44 +72,48 @@
                     </button>
                 </div>
             </div>
-            <!-- RC Specific Controls -->
-            <div id="rcControls" class="mt-6 pt-4 border-t border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div>
+            <!-- Additional Controls -->
+            <div class="mt-6 pt-4 border-t border-gray-700 grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div id="rcControls">
                     <label for="rcAlpha" class="block text-sm font-medium text-gray-300 mb-2">Roll-off Factor (α): <span id="rcAlphaValue" class="font-mono text-cyan-400">0.35</span></label>
                     <input type="range" id="rcAlpha" min="0.05" max="1.0" value="0.35" step="0.05" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
                 </div>
-                <div>
+                <div id="rcSpanControl">
                     <label for="filterSpan" class="block text-sm font-medium text-gray-300 mb-2">Filter Span (Symbols)</label>
                     <input type="number" id="filterSpan" value="4" min="2" step="2" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-cyan-500 focus:border-cyan-500 p-2.5">
+                </div>
+                <div>
+                    <label for="snr" class="block text-sm font-medium text-gray-300 mb-2">SNR (dB): <span id="snrValue" class="font-mono text-cyan-400">No Noise</span></label>
+                    <input type="range" id="snr" min="0" max="60" value="60" step="1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
                 </div>
             </div>
         </div>
 
         <!-- Plots Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Constellation -->
-            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+            <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
                 <h2 class="text-xl font-semibold text-center mb-4">IQ Constellation Diagram</h2>
                 <div class="chart-container">
                     <canvas id="constellationChart"></canvas>
                 </div>
             </div>
             <!-- Individual Pulses -->
-            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+            <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
                 <h2 class="text-xl font-semibold text-center mb-4">Individual Pulse Waveforms</h2>
                 <div class="chart-container">
                     <canvas id="individualWaveformChart"></canvas>
                 </div>
             </div>
             <!-- Summed I/Q -->
-            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+            <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
                 <h2 class="text-xl font-semibold text-center mb-4">Summed I & Q Waveforms</h2>
                 <div class="chart-container">
                     <canvas id="summedWaveformChart"></canvas>
                 </div>
             </div>
             <!-- Power -->
-            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+            <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
                 <h2 class="text-xl font-semibold text-center mb-4">Power vs. Time</h2>
                 <div class="chart-container">
                     <canvas id="powerChart"></canvas>
@@ -115,7 +121,7 @@
             </div>
         </div>
         
-        <footer class="text-center mt-8 text-gray-500">
+        <footer class="text-center mt-6 text-gray-500">
             <p>Built with ❤️ and JavaScript</p>
         </footer>
     </div>
@@ -138,25 +144,42 @@
          */
         function generateSymbols(modulationScheme, numSymbols) {
             let symbols = [];
+            let M = 0;
+            if (modulationScheme === 'BPSK') M = 2;
+            if (modulationScheme === 'QPSK' || modulationScheme === 'OQPSK') M = 4;
+            if (modulationScheme === '8PSK') M = 8;
+            if (modulationScheme === 'ASK') M = 4;
+            if (modulationScheme === '16-QAM') M = 16;
+            if (modulationScheme === '64-QAM') M = 64;
+
+            const qam_levels = Math.sqrt(M);
+            const qam_map = Array.from({length: qam_levels}, (_, i) => 2 * i - (qam_levels - 1));
+
             for (let i = 0; i < numSymbols; i++) {
                 let symbol = { re: 0, im: 0 };
                 if (modulationScheme === 'BPSK') {
                     const bit = Math.round(Math.random());
                     symbol.re = 2 * bit - 1;
                 } else if (modulationScheme === 'QPSK' || modulationScheme === 'OQPSK') {
-                    const bits = Math.floor(Math.random() * 4);
+                    const bits = Math.floor(Math.random() * M);
                     const angle = bits * Math.PI / 2 + Math.PI / 4;
                     symbol.re = Math.cos(angle);
                     symbol.im = Math.sin(angle);
                 } else if (modulationScheme === '8PSK') {
-                    const bits = Math.floor(Math.random() * 8);
-                    const angle = bits * Math.PI / 4;
+                    const bits = Math.floor(Math.random() * M);
+                    const angle = bits * Math.PI / M;
                     symbol.re = Math.cos(angle);
                     symbol.im = Math.sin(angle);
-                } else if (modulationScheme === 'ASK') { // 4-ASK
-                    const bits = Math.floor(Math.random() * 4);
-                    const M = 4;
+                } else if (modulationScheme === 'ASK') {
+                    const bits = Math.floor(Math.random() * M);
                     symbol.re = (2*bits - (M-1)) / (M-1); // Normalized
+                } else if (modulationScheme === '16-QAM' || modulationScheme === '64-QAM') {
+                    symbol.re = qam_map[Math.floor(Math.random() * qam_levels)];
+                    symbol.im = qam_map[Math.floor(Math.random() * qam_levels)];
+                    // Normalize to have average power of 1
+                    const norm_factor = Math.sqrt(2 * (qam_levels**2 - 1) / 3);
+                    symbol.re /= norm_factor;
+                    symbol.im /= norm_factor;
                 }
                 symbols.push(symbol);
             }
@@ -191,6 +214,7 @@
             }
              // Normalize pulse energy
             const energy = pulse.reduce((sum, val) => sum + val*val, 0);
+            if (energy === 0) return pulse;
             return pulse.map(p => p / Math.sqrt(energy));
         }
         
@@ -207,6 +231,29 @@
             }
             return colors;
         }
+        
+        /**
+         * Adds Additive White Gaussian Noise to a signal.
+         */
+        function addNoise(i_data, q_data, snr_db) {
+            if (snr_db >= 60) {
+                return { i_noisy: i_data, q_noisy: q_data };
+            }
+            
+            const signal_power = i_data.reduce((sum, val, idx) => sum + val**2 + q_data[idx]**2, 0) / i_data.length;
+            if(signal_power === 0) {
+                return { i_noisy: i_data, q_noisy: q_data };
+            }
+
+            const snr_linear = 10**(snr_db / 10);
+            const noise_power = signal_power / snr_linear;
+            const noise_std_dev = Math.sqrt(noise_power / 2);
+
+            const i_noisy = i_data.map(val => val + (Math.random() - 0.5 + Math.random() - 0.5 + Math.random() - 0.5) * noise_std_dev * 2.5);
+            const q_noisy = q_data.map(val => val + (Math.random() - 0.5 + Math.random() - 0.5 + Math.random() - 0.5) * noise_std_dev * 2.5);
+            
+            return { i_noisy, q_noisy };
+        }
 
         /**
          * Main simulation function. Gathers parameters, generates data, and updates plots.
@@ -217,6 +264,7 @@
             const samplesPerSymbol = parseInt(document.getElementById('samplesPerSymbol').value, 10);
             const rcAlpha = parseFloat(document.getElementById('rcAlpha').value);
             const filterSpan = parseInt(document.getElementById('filterSpan').value, 10);
+            const snr_db = parseFloat(document.getElementById('snr').value);
             
             // 1. Generate symbols
             const symbols = generateSymbols(modulation, PARAMS.numSymbols);
@@ -226,8 +274,8 @@
 
             // 3. Create the final signal by summing scaled and shifted pulses
             const totalSignalLength = (PARAMS.numSymbols + filterSpan) * samplesPerSymbol;
-            let summed_i = new Array(totalSignalLength).fill(0);
-            let summed_q = new Array(totalSignalLength).fill(0);
+            let summed_i_ideal = new Array(totalSignalLength).fill(0);
+            let summed_q_ideal = new Array(totalSignalLength).fill(0);
             let individual_pulses = [];
             const q_delay = (modulation === 'OQPSK') ? Math.floor(samplesPerSymbol / 2) : 0;
 
@@ -235,20 +283,12 @@
                 const symbol = symbols[i];
                 const i_start_index = i * samplesPerSymbol;
                 const q_start_index = i_start_index + q_delay;
-
-                // Add the current shaped pulse to the summed signal
                 for (let k = 0; k < pulse.length; k++) {
-                    if (i_start_index + k < totalSignalLength) {
-                        summed_i[i_start_index + k] += symbol.re * pulse[k];
-                    }
-                    if (q_start_index + k < totalSignalLength) {
-                        summed_q[q_start_index + k] += symbol.im * pulse[k];
-                    }
+                    if (i_start_index + k < totalSignalLength) summed_i_ideal[i_start_index + k] += symbol.re * pulse[k];
+                    if (q_start_index + k < totalSignalLength) summed_q_ideal[q_start_index + k] += symbol.im * pulse[k];
                 }
-                
-                // Store the first few individual pulses for plotting
                 if (i < PARAMS.pulsesToDisplay) {
-                    let p_i = new Array(totalSignalLength).fill(NaN); // Use NaN to create gaps
+                    let p_i = new Array(totalSignalLength).fill(NaN);
                     let p_q = new Array(totalSignalLength).fill(NaN);
                     for(let k=0; k<pulse.length; k++){
                         if (i_start_index + k < totalSignalLength) p_i[i_start_index + k] = symbol.re * pulse[k];
@@ -258,14 +298,17 @@
                 }
             }
             
-            // 4. Calculate power
-            const power = summed_i.map((val, index) => val**2 + summed_q[index]**2);
+            // 4. Add noise
+            const { i_noisy, q_noisy } = addNoise(summed_i_ideal, summed_q_ideal, snr_db);
+
+            // 5. Calculate power
+            const power = i_noisy.map((val, index) => val**2 + q_noisy[index]**2);
             
-            // 5. Plot results
+            // 6. Plot results
             const samplesToShow = PARAMS.pulsesToDisplay * samplesPerSymbol + (pulseShapeName === 'RC' ? filterSpan * samplesPerSymbol : samplesPerSymbol);
-            plotConstellation(summed_i, summed_q);
+            plotConstellation(i_noisy, q_noisy);
             plotIndividualWaveforms(individual_pulses, samplesToShow);
-            plotSummedWaveform(summed_i, summed_q, samplesToShow);
+            plotSummedWaveform(i_noisy, q_noisy, samplesToShow);
             plotPower(power, samplesToShow);
         }
         
@@ -300,7 +343,13 @@
             });
 
             const options = getCommonChartOptions('Sample Index', 'Amplitude');
-            options.plugins = { legend: { display: false } };
+            options.plugins = { 
+                legend: {
+                    display: true, position: 'top', labels: { color: '#d1d5db',
+                        generateLabels: function(chart) {
+                            return [{ text: 'I-Pulses (Solid)', fillStyle: 'rgba(160, 160, 160, 1)', strokeStyle: 'rgba(160, 160, 160, 1)', lineWidth: 1.5, hidden: false, index: 0 },
+                                { text: 'Q-Pulses (Dashed)', fillStyle: 'rgba(160, 160, 160, 1)', strokeStyle: 'rgba(160, 160, 160, 1)', lineDash: [5, 5], lineWidth: 1.5, hidden: false, index: 1 }];
+                        }}}};
             individualWaveformChart = plotChart('individualWaveformChart', individualWaveformChart, {type: 'line', data: { labels, datasets }, options});
         }
 
@@ -343,7 +392,14 @@
         function updateRCControlsVisibility() {
             const pulseShape = document.getElementById('pulseShape').value;
             const rcControls = document.getElementById('rcControls');
-            rcControls.style.display = pulseShape === 'RC' ? 'grid' : 'none';
+            const rcSpanControl = document.getElementById('rcSpanControl');
+            if (pulseShape === 'RC') {
+                rcControls.style.display = 'block';
+                rcSpanControl.style.display = 'block';
+            } else {
+                rcControls.style.display = 'none';
+                rcSpanControl.style.display = 'none';
+            }
         }
 
         // --- Event Listeners ---
@@ -351,6 +407,10 @@
         document.getElementById('pulseShape').addEventListener('change', updateRCControlsVisibility);
         document.getElementById('rcAlpha').addEventListener('input', (e) => {
             document.getElementById('rcAlphaValue').textContent = parseFloat(e.target.value).toFixed(2);
+        });
+        document.getElementById('snr').addEventListener('input', (e) => {
+            const snrVal = e.target.value;
+            document.getElementById('snrValue').textContent = snrVal == 60 ? "No Noise" : snrVal;
         });
 
         // --- Initial Load ---
