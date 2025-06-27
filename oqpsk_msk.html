@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OQPSK with Half-Sine vs. MSK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold text-center mb-4 text-gray-800">Visualizing the Equivalence of OQPSK with Half-Sine Pulse Shaping and MSK</h1>
+        <p class="text-lg text-gray-600 mb-6 text-center">This interactive visualization demonstrates how Offset Quadrature Phase-Shift Keying (OQPSK) with half-sine pulse shaping is mathematically and graphically identical to Minimum-Shift Keying (MSK).</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- OQPSK Visualization -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h2 class="text-xl font-semibold mb-2 text-gray-700">OQPSK with Half-Sine Pulse Shaping</h2>
+                <div class="mb-4">
+                    <label for="data-input" class="block text-sm font-medium text-gray-700">Input Data Stream (8 bits):</label>
+                    <input type="text" id="data-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="10110010">
+                </div>
+                <div class="chart-container"><canvas id="oqpsk-iq-chart"></canvas></div>
+                <div class="chart-container"><canvas id="oqpsk-phase-chart"></canvas></div>
+                <div class="chart-container"><canvas id="oqpsk-constellation-chart"></canvas></div>
+            </div>
+
+            <!-- MSK Visualization -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h2 class="text-xl font-semibold mb-2 text-gray-700">Minimum-Shift Keying (MSK)</h2>
+                 <p class="text-sm text-gray-600 mb-4">MSK is a type of Continuous Phase Frequency-Shift Keying (CPFSK) with a modulation index of 0.5. This results in a phase change of ±π/2 for each bit.</p>
+                <div class="chart-container"><canvas id="msk-phase-chart"></canvas></div>
+                <div class="chart-container"><canvas id="msk-freq-chart"></canvas></div>
+                <div class="chart-container"><canvas id="msk-constellation-chart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dataInput = document.getElementById('data-input');
+        let charts = {};
+
+        // A custom Chart.js plugin to draw annotations on the constellation diagrams.
+        const constellationAnnotationPlugin = {
+            id: 'constellationAnnotation',
+            afterDraw: (chart) => {
+                const ctx = chart.ctx;
+                const xAxis = chart.scales.x;
+                const yAxis = chart.scales.y;
+                
+                ctx.save(); // Save the context state
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // Define the points and labels to annotate
+                const points = [
+                    { x: 1, y: 0, text: '(I=1, Q=0)', xOffset: 40, yOffset: 0 },
+                    { x: -1, y: 0, text: '(I=-1, Q=0)', xOffset: -40, yOffset: 0 },
+                    { x: 0, y: 1, text: '(I=0, Q=1)', xOffset: 0, yOffset: -15 },
+                    { x: 0, y: -1, text: '(I=0, Q=-1)', xOffset: 0, yOffset: 15 }
+                ];
+
+                // Draw each annotation
+                points.forEach(point => {
+                    const pixelX = xAxis.getPixelForValue(point.x);
+                    const pixelY = yAxis.getPixelForValue(point.y);
+                    ctx.fillText(point.text, pixelX + point.xOffset, pixelY + point.yOffset);
+                });
+                
+                ctx.restore(); // Restore the context to its original state
+            }
+        };
+
+        function generateData() {
+            const data = dataInput.value.split('').map(bit => parseInt(bit, 10));
+            const T = 1; // Symbol period (or bit period Tb)
+            const samplesPerSymbol = 100;
+            const t = Array.from({ length: data.length * samplesPerSymbol }, (_, i) => i * T / samplesPerSymbol);
+
+            // OQPSK Data
+            const I = [];
+            const Q = [];
+            for (let i = 0; i < data.length; i += 2) {
+                const i_val = data[i] === 1 ? 1 : -1;
+                const q_val = data[i + 1] === 1 ? 1 : -1;
+                for (let j = 0; j < 2 * samplesPerSymbol; j++) {
+                    I.push(i_val);
+                    Q.push(q_val);
+                }
+            }
+            const Q_offset = Q.slice(samplesPerSymbol, Q.length);
+
+            // Half-sine pulse shaping
+            const p = (t) => (t >= 0 && t <= 2 * T) ? Math.sin(Math.PI * t / (2 * T)) : 0;
+            const I_shaped = [];
+            const Q_shaped = [];
+            for (let i = 0; i < data.length / 2; i++) {
+                const i_val = data[2 * i] === 1 ? 1 : -1;
+                const q_val = data[2 * i + 1] === 1 ? 1 : -1;
+                for (let j = 0; j < 2 * samplesPerSymbol; j++) {
+                    I_shaped.push(i_val * p(j * T / samplesPerSymbol));
+                    Q_shaped.push(q_val * p(j * T / samplesPerSymbol));
+                }
+            }
+            const Q_shaped_offset = Q_shaped.slice(samplesPerSymbol, Q_shaped.length);
+
+            // OQPSK Phase
+            const oqpsk_phase = [];
+            for (let i = 0; i < I_shaped.length - samplesPerSymbol; i++) {
+                oqpsk_phase.push(Math.atan2(Q_shaped_offset[i], I_shaped[i]));
+            }
+
+            // MSK Data
+            let msk_phase = [0];
+            let msk_freq = [];
+            let prev_phase = 0;
+            for(let i = 0; i < data.length; i++) {
+                const d = data[i] === 1 ? 1 : -1;
+                const freq = d / (4 * T);
+                for (let j = 0; j < samplesPerSymbol; j++) {
+                    const phase = prev_phase + d * Math.PI / (2 * T) * (j * T / samplesPerSymbol);
+                    msk_phase.push(phase);
+                    msk_freq.push(freq);
+                }
+                prev_phase += d * Math.PI / 2;
+            }
+
+            return { t, I_shaped, Q_shaped_offset, oqpsk_phase, msk_phase, msk_freq, samplesPerSymbol };
+        }
+
+        function drawCharts() {
+            const { t, I_shaped, Q_shaped_offset, oqpsk_phase, msk_phase, msk_freq, samplesPerSymbol } = generateData();
+
+            if (charts.oqpskIqChart) charts.oqpskIqChart.destroy();
+            charts.oqpskIqChart = new Chart(document.getElementById('oqpsk-iq-chart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: t.slice(0, I_shaped.length - samplesPerSymbol),
+                    datasets: [
+                        { label: 'I (In-phase)', data: I_shaped, borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 2, fill: false, pointRadius: 0 },
+                        { label: 'Q (Quadrature)', data: Q_shaped_offset, borderColor: 'rgba(255, 99, 132, 1)', borderWidth: 2, fill: false, pointRadius: 0 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Time' } }, y: { title: { display: true, text: 'Amplitude' } } } }
+            });
+
+            if (charts.oqpskPhaseChart) charts.oqpskPhaseChart.destroy();
+            charts.oqpskPhaseChart = new Chart(document.getElementById('oqpsk-phase-chart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: t.slice(0, oqpsk_phase.length),
+                    datasets: [{ label: 'OQPSK Phase', data: oqpsk_phase, borderColor: 'rgba(75, 192, 192, 1)', borderWidth: 2, fill: false, pointRadius: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Time' } }, y: { title: { display: true, text: 'Phase (radians)' } } } }
+            });
+            
+             if (charts.oqpskConstellationChart) charts.oqpskConstellationChart.destroy();
+            charts.oqpskConstellationChart = new Chart(document.getElementById('oqpsk-constellation-chart').getContext('2d'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'OQPSK Constellation',
+                        data: I_shaped.map((val, i) => ({ x: val, y: Q_shaped_offset[i] })),
+                        backgroundColor: 'rgba(153, 102, 255, 0.6)'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'In-Phase' }, min:-1.5, max: 1.5 }, y: { title: { display: true, text: 'Quadrature' }, min: -1.5, max:1.5 } } },
+                plugins: [constellationAnnotationPlugin] // Register the plugin here
+            });
+
+
+            if (charts.mskPhaseChart) charts.mskPhaseChart.destroy();
+            charts.mskPhaseChart = new Chart(document.getElementById('msk-phase-chart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: t.slice(0, msk_phase.length),
+                    datasets: [{ label: 'MSK Phase', data: msk_phase, borderColor: 'rgba(75, 192, 192, 1)', borderWidth: 2, fill: false, pointRadius: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Time' } }, y: { title: { display: true, text: 'Phase (radians)' } } } }
+            });
+
+            if (charts.mskFreqChart) charts.mskFreqChart.destroy();
+            charts.mskFreqChart = new Chart(document.getElementById('msk-freq-chart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: t.slice(0, msk_freq.length),
+                    datasets: [{ label: 'MSK Frequency Shift', data: msk_freq, borderColor: 'rgba(255, 159, 64, 1)', borderWidth: 2, fill: false, pointRadius: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Time' } }, y: { title: { display: true, text: 'Frequency Shift' } } } }
+            });
+            
+             if (charts.mskConstellationChart) charts.mskConstellationChart.destroy();
+            charts.mskConstellationChart = new Chart(document.getElementById('msk-constellation-chart').getContext('2d'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'MSK Constellation',
+                        data: msk_phase.map((phase, i) => ({ x: Math.cos(phase), y: Math.sin(phase) })),
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'In-Phase' }, min:-1.5, max: 1.5 }, y: { title: { display: true, text: 'Quadrature' }, min: -1.5, max: 1.5 } } },
+                plugins: [constellationAnnotationPlugin] // And register it here as well
+            });
+        }
+
+        dataInput.addEventListener('input', drawCharts);
+        drawCharts();
+    </script>
+</body>
+</html>
