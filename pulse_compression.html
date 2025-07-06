@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matched Filter and Chirp Compression Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+            background-color: #1f2937; /* gray-800 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .control-panel label, .option-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1rem;
+            background-color: #374151; /* gray-700 */
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border: 1px solid #4b5563; /* gray-600 */
+            color: #d1d5db; /* gray-300 */
+        }
+        .control-panel input[type="radio"]:checked + label {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+            border-color: #2563eb; /* blue-600 */
+        }
+        .control-panel input[type="radio"], .options-panel input[type="checkbox"] {
+            display: none;
+        }
+        .options-panel input[type="checkbox"]:checked + .option-label {
+             background-color: #16a34a; /* green-600 */
+             border-color: #15803d; /* green-700 */
+             color: white;
+        }
+        .options-panel input[type="checkbox"]:disabled + .option-label {
+            background-color: #4b5563;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .input-style {
+            background-color: #374151;
+            border: 1px solid #4b5563;
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            text-align: center;
+            color: #e5e7eb; /* gray-200 */
+        }
+        .snr-input {
+            width: 80px;
+        }
+        .action-button {
+            padding: 0.5rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+            border: 1px solid #6b7280;
+            background-color: #4b5563;
+        }
+        .action-button:hover {
+            background-color: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-6xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white">Matched Filter Simulation</h1>
+            <p class="text-lg text-gray-400 mt-2">Visualizing Pulse Compression and Convolution</p>
+        </header>
+
+        <!-- Controls -->
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-8 space-y-6">
+            <div>
+                <h2 class="text-xl font-semibold mb-4 text-white">1. Select Signal Type</h2>
+                <div class="control-panel grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div><input type="radio" id="chirp" name="signal_type" value="chirp" checked><label for="chirp">Linear Chirp</label></div>
+                    <div><input type="radio" id="sinusoid" name="signal_type" value="sinusoid"><label for="sinusoid">Sinusoid</label></div>
+                    <div><input type="radio" id="gaussian" name="signal_type" value="gaussian"><label for="gaussian">Gaussian</label></div>
+                    <div><input type="radio" id="rrc" name="signal_type" value="rrc"><label for="rrc">RRC Pulse</label></div>
+                    <div><input type="radio" id="rectangle" name="signal_type" value="rectangle"><label for="rectangle">Rectangle</label></div>
+                </div>
+            </div>
+            <div class="options-panel">
+                <h2 class="text-xl font-semibold mb-4 text-white">2. Simulation Mode</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><input type="checkbox" id="noiseCheck"><label for="noiseCheck" class="option-label">Enable Noise Simulation</label></div>
+                    <div><input type="checkbox" id="convAnimateCheck"><label for="convAnimateCheck" class="option-label">Animate Convolution</label></div>
+                </div>
+                <div id="animationControls" class="hidden mt-4 flex justify-center">
+                    <button id="pauseButton" class="action-button">Pause</button>
+                </div>
+                <div id="noiseOptions" class="hidden mt-4 p-4 bg-gray-700/50 rounded-lg space-y-4">
+                    <div class="flex items-center justify-center gap-4 flex-wrap">
+                        <label for="minSnr" class="text-sm font-medium">Min SNR (dB):</label>
+                        <input type="number" id="minSnr" value="-10" class="input-style snr-input">
+                        <label for="maxSnr" class="text-sm font-medium">Max SNR (dB):</label>
+                        <input type="number" id="maxSnr" value="20" class="input-style snr-input">
+                    </div>
+                     <div class="flex items-center justify-center gap-4 flex-wrap">
+                        <label for="simRate" class="text-sm font-medium">Simulation Rate:</label>
+                        <select id="simRate" class="input-style">
+                            <option value="500">Slow</option>
+                            <option value="200" selected>Normal</option>
+                            <option value="50">Fast</option>
+                            <option value="10">Very Fast</option>
+                        </select>
+                    </div>
+                    <div id="currentSnrDisplay" class="w-full text-center pt-2 font-mono text-lg text-green-400"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plots -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg"><h3 class="text-lg font-semibold text-center text-white">Input Signal</h3><div class="chart-container"><canvas id="signalCanvas"></canvas></div></div>
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg"><h3 class="text-lg font-semibold text-center text-white">Matched Filter & Input</h3><div class="chart-container"><canvas id="filterCanvas"></canvas><canvas id="filterAnimCanvas"></canvas></div></div>
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg"><h3 class="text-lg font-semibold text-center text-white">Filtered Output</h3><div class="chart-container"><canvas id="outputCanvas"></canvas><canvas id="outputAnimCanvas"></canvas></div><p id="pslr" class="text-center mt-3 text-blue-400 font-mono"></p></div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global Parameters & State ---
+        const Fs = 1000, T = 1, N = Fs * T;
+        const time = Array.from({ length: N }, (_, i) => i / Fs);
+        let snrTimeoutId = null, convAnimationId = null;
+        let currentSNR, minSNR, maxSNR;
+        let simulationDelay = 200, convolutionStep = 0, isPaused = false;
+        let baseSignal, noisySignal, matchedFilter, outputSignal;
+
+        // --- DOM Elements ---
+        const canvases = { 
+            signal: document.getElementById('signalCanvas'), 
+            filter: document.getElementById('filterCanvas'), 
+            filterAnim: document.getElementById('filterAnimCanvas'),
+            output: document.getElementById('outputCanvas'), 
+            outputAnim: document.getElementById('outputAnimCanvas') 
+        };
+        const contexts = { 
+            signal: canvases.signal.getContext('2d'), 
+            filter: canvases.filter.getContext('2d'), 
+            filterAnim: canvases.filterAnim.getContext('2d'),
+            output: canvases.output.getContext('2d'), 
+            outputAnim: canvases.outputAnim.getContext('2d') 
+        };
+        const pslrElement = document.getElementById('pslr');
+        const noiseCheck = document.getElementById('noiseCheck'), convAnimateCheck = document.getElementById('convAnimateCheck');
+        const noiseOptions = document.getElementById('noiseOptions'), animationControls = document.getElementById('animationControls');
+        const minSnrInput = document.getElementById('minSnr'), maxSnrInput = document.getElementById('maxSnr');
+        const currentSnrDisplay = document.getElementById('currentSnrDisplay'), simRateSelector = document.getElementById('simRate');
+        const pauseButton = document.getElementById('pauseButton');
+
+        // --- Signal Generation (minified for brevity) ---
+        function generateSignal(type) { switch (type) { case 'chirp': return generateChirp(); case 'sinusoid': return generateSinusoid(); case 'gaussian': return generateGaussian(); case 'rrc': return generateRRC(); case 'rectangle': return generateRectangle(); default: return new Float32Array(N).fill(0); } }
+        function generateChirp() { const f0 = 10, f1 = 100, T_c = 0.5; const s = new Float32Array(N).fill(0); for (let i = 0; i < N; i++) { const t = time[i] - (T - T_c) / 2; if (t >= 0 && t < T_c) s[i] = Math.cos(2 * Math.PI * (f0 * t + (f1 - f0) * t * t / (2 * T_c))); } return s; }
+        function generateSinusoid() { const f = 30, T_p = 0.5; const s = new Float32Array(N).fill(0); const st = Math.floor((N - T_p * Fs) / 2), et = st + T_p * Fs; for (let i = st; i < et; i++) s[i] = Math.sin(2 * Math.PI * f * time[i]); return s; }
+        function generateGaussian() { const mu = T / 2, sig = 0.05; const s = new Float32Array(N); for (let i = 0; i < N; i++) s[i] = Math.exp(-0.5 * Math.pow((time[i] - mu) / sig, 2)); return s; }
+        function generateRRC() { const Ts = 0.1, b = 0.5, c = T / 2; const s = new Float32Array(N).fill(0); for (let i = 0; i < N; i++) { const t = time[i] - c; if (t === 0) s[i] = (1 - b + 4 * b / Math.PI); else if (Math.abs(t) === Ts / (4 * b)) s[i] = (b / Math.sqrt(2)) * ((1 + 2 / Math.PI) * Math.sin(Math.PI / (4 * b)) + (1 - 2 / Math.PI) * Math.cos(Math.PI / (4 * b))); else s[i] = (Math.sin(Math.PI * t / Ts * (1 - b)) + 4 * b * t / Ts * Math.cos(Math.PI * t / Ts * (1 + b))) / (Math.PI * t / Ts * (1 - Math.pow(4 * b * t / Ts, 2))); } const max = Math.max(...s.map(Math.abs)); return s.map(v => v / max); }
+        function generateRectangle() { const w = 0.2; const s = new Float32Array(N).fill(0); const st = Math.floor((T - w) / 2 * Fs), et = Math.floor((T + w) / 2 * Fs); for (let i = st; i < et; i++) s[i] = 1; return s; }
+
+        // --- Signal Processing (minified for brevity) ---
+        function generateAWGN(signal, snr_dB) { const p = signal.reduce((a, v) => a + v * v, 0) / signal.length; if (p === 0) return new Float32Array(signal.length).fill(0); const snrL = Math.pow(10, snr_dB / 10); const nP = p / snrL; const nS = Math.sqrt(nP); const n = new Float32Array(signal.length); for (let i = 0; i < signal.length; i += 2) { let u1 = Math.random(), u2 = Math.random(); if (u1 === 0) u1 = 1e-10; let z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2); let z2 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2); n[i] = z1 * nS; if (i + 1 < signal.length) n[i + 1] = z2 * nS; } return n; }
+        function convolve(s1, s2) { const N1 = s1.length, N2 = s2.length, M = N1 + N2 - 1; const o = new Float32Array(M).fill(0); for (let n = 0; n < M; n++) for (let k = 0; k < N1; k++) if (n - k >= 0 && n - k < N2) o[n] += s1[k] * s2[n - k]; return o; }
+        function calculatePSLR(data) { const a = data.map(v => Math.abs(v)); const pV = Math.max(...a); if (pV === 0) return NaN; const pI = a.indexOf(pV); let rN = -1, lN = -1; for (let i = pI + 1; i < data.length - 1; i++) if (a[i] < a[i-1] && a[i] < a[i+1]) { rN = i; break; } for (let i = pI - 1; i > 0; i--) if (a[i] < a[i-1] && a[i] < a[i+1]) { lN = i; break; } if (lN === -1 || rN === -1) return NaN; let mS = 0; for(let i = 0; i < lN; i++) if (a[i] > mS) mS = a[i]; for(let i = rN + 1; i < a.length; i++) if (a[i] > mS) mS = a[i]; if (mS === 0) return Infinity; return 20 * Math.log10(pV / mS); }
+
+        // --- Drawing (minified for brevity) ---
+        function drawAxes(ctx) { const c = ctx.canvas; ctx.clearRect(0, 0, c.width, c.height); ctx.strokeStyle = '#4b5563'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(c.width / 2, 0); ctx.lineTo(c.width / 2, c.height); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, c.height / 2); ctx.lineTo(c.width, c.height / 2); ctx.stroke(); }
+        function plotData(ctx, data, color, yMax = 0) { const c = ctx.canvas; drawAxes(ctx); let max = yMax; if (max === 0) { for(let i=0; i<data.length; i++) if (Math.abs(data[i]) > max) max = Math.abs(data[i]); } if (max === 0) max = 1; ctx.beginPath(); ctx.lineWidth = 2; ctx.strokeStyle = color; for (let i = 0; i < data.length; i++) { const x = (i / (data.length - 1)) * c.width; const y = c.height / 2 - (data[i] / max) * (c.height / 2.1); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke(); }
+
+        // --- Main Simulation & Animation Logic ---
+        function runFullSimulation(snr_dB = null) {
+            const signalType = document.querySelector('input[name="signal_type"]:checked').value;
+            baseSignal = generateSignal(signalType);
+            noisySignal = baseSignal;
+            let yMaxSignalPlot = 0;
+            if (snr_dB !== null) {
+                const noise = generateAWGN(baseSignal, snr_dB);
+                noisySignal = baseSignal.map((v, i) => v + noise[i]);
+                yMaxSignalPlot = 5 * Math.sqrt(baseSignal.reduce((a, v) => a + v * v, 0) / baseSignal.length);
+                if (yMaxSignalPlot === 0) yMaxSignalPlot = 5;
+            }
+            matchedFilter = new Float32Array(baseSignal).reverse();
+            outputSignal = convolve(noisySignal, matchedFilter);
+            const centeredOutput = outputSignal.slice(Math.floor(outputSignal.length / 2) - Math.floor(N/2), Math.floor(outputSignal.length / 2) + Math.ceil(N/2));
+            plotData(contexts.signal, noisySignal, '#34d399', yMaxSignalPlot);
+            plotData(contexts.filter, matchedFilter, '#fb923c');
+            plotData(contexts.output, centeredOutput, '#60a5fa');
+            const pslr = calculatePSLR(centeredOutput);
+            pslrElement.textContent = !isNaN(pslr) ? `Peak-to-Sidelobe Ratio: ${pslr.toFixed(2)} dB` : `PSLR: N/A`;
+        }
+
+        function snrAnimationLoop() {
+            if (isPaused) return;
+            currentSNR += 1;
+            if (currentSNR > maxSNR) currentSNR = minSNR;
+            runFullSimulation(currentSNR);
+            currentSnrDisplay.textContent = `Current SNR: ${currentSNR.toFixed(0)} dB`;
+            snrTimeoutId = setTimeout(snrAnimationLoop, simulationDelay);
+        }
+
+        function convolutionAnimationLoop() {
+            if (isPaused) return;
+            const ctxFilterAnim = contexts.filterAnim, ctxOutAnim = contexts.outputAnim;
+            const canvasFilterAnim = canvases.filterAnim, canvasOutAnim = canvases.outputAnim;
+            ctxFilterAnim.clearRect(0, 0, canvasFilterAnim.width, canvasFilterAnim.height);
+            ctxOutAnim.clearRect(0, 0, canvasOutAnim.width, canvasOutAnim.height);
+            
+            // Draw the sliding, time-reversed input signal over the static filter
+            const signalToPlot = noiseCheck.checked ? noisySignal : baseSignal;
+            const signalReversed = new Float32Array(signalToPlot).reverse();
+            const maxFilter = Math.max(...matchedFilter.map(v => Math.abs(v))) || 1;
+            
+            ctxFilterAnim.beginPath(); ctxFilterAnim.lineWidth = 2; ctxFilterAnim.strokeStyle = "rgba(52, 211, 153, 0.7)"; // emerald-400 with alpha
+            for (let i = 0; i < N; i++) {
+                const x = ((convolutionStep - N + i) / (N - 1)) * canvasFilterAnim.width;
+                const y = canvasFilterAnim.height / 2 - (signalReversed[i] / maxFilter) * (canvasFilterAnim.height / 2.1);
+                if (i === 0) ctxFilterAnim.moveTo(x, y);
+                else ctxFilterAnim.lineTo(x, y);
+            }
+            ctxFilterAnim.stroke();
+
+            // Draw the output point
+            const outputLen = outputSignal.length;
+            const maxOutput = Math.max(...outputSignal.map(v => Math.abs(v))) || 1;
+            const xOut = ((convolutionStep) / (outputLen - 1)) * canvasOutAnim.width;
+            const yOut = canvasOutAnim.height / 2 - (outputSignal[convolutionStep] / maxOutput) * (canvasOutAnim.height / 2.1);
+            ctxOutAnim.beginPath(); ctxOutAnim.arc(xOut, yOut, 5, 0, 2 * Math.PI); ctxOutAnim.fillStyle = '#f87171'; ctxOutAnim.fill();
+            
+            convolutionStep = (convolutionStep + 1) % outputLen;
+            convAnimationId = requestAnimationFrame(convolutionAnimationLoop);
+        }
+
+        function startConvolutionAnimation() {
+            stopSnrAnimation();
+            noiseCheck.checked = false; noiseCheck.disabled = true;
+            animationControls.classList.remove('hidden');
+            isPaused = false; pauseButton.textContent = 'Pause';
+            runFullSimulation();
+            convolutionStep = 0;
+            if (convAnimationId) cancelAnimationFrame(convAnimationId);
+            convolutionAnimationLoop();
+        }
+        function stopConvolutionAnimation() {
+            if (convAnimationId) cancelAnimationFrame(convAnimationId);
+            convAnimationId = null;
+            contexts.filterAnim.clearRect(0, 0, canvases.filterAnim.width, canvases.filterAnim.height);
+            contexts.outputAnim.clearRect(0, 0, canvases.outputAnim.width, canvases.outputAnim.height);
+            noiseCheck.disabled = false;
+            animationControls.classList.add('hidden');
+            runFullSimulation();
+        }
+        function startSnrAnimation() {
+            stopConvolutionAnimation();
+            convAnimateCheck.checked = false; convAnimateCheck.disabled = true;
+            animationControls.classList.remove('hidden');
+            noiseOptions.classList.remove('hidden');
+            isPaused = false; pauseButton.textContent = 'Pause';
+            minSNR = parseInt(minSnrInput.value, 10); maxSNR = parseInt(maxSnrInput.value, 10);
+            simulationDelay = parseInt(simRateSelector.value, 10);
+            currentSNR = minSNR - 1;
+            if (snrTimeoutId) clearTimeout(snrTimeoutId);
+            snrAnimationLoop();
+        }
+        function stopSnrAnimation() {
+            if (snrTimeoutId) clearTimeout(snrTimeoutId);
+            snrTimeoutId = null;
+            convAnimateCheck.disabled = false;
+            animationControls.classList.add('hidden');
+            noiseOptions.classList.add('hidden');
+            currentSnrDisplay.textContent = '';
+            runFullSimulation();
+        }
+
+        // --- Event Listeners ---
+        noiseCheck.addEventListener('change', (e) => e.target.checked ? startSnrAnimation() : stopSnrAnimation());
+        convAnimateCheck.addEventListener('change', (e) => e.target.checked ? startConvolutionAnimation() : stopConvolutionAnimation());
+        pauseButton.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseButton.textContent = isPaused ? 'Resume' : 'Pause';
+            if (!isPaused) { // If resuming
+                if (noiseCheck.checked) snrAnimationLoop();
+                if (convAnimateCheck.checked) convolutionAnimationLoop();
+            }
+        });
+        document.querySelectorAll('input[name="signal_type"]').forEach(r => r.addEventListener('change', () => {
+            if (!convAnimateCheck.checked && !noiseCheck.checked) runFullSimulation();
+        }));
+        minSnrInput.addEventListener('change', () => minSNR = parseInt(minSnrInput.value, 10));
+        maxSnrInput.addEventListener('change', () => maxSNR = parseInt(maxSnrInput.value, 10));
+        simRateSelector.addEventListener('change', (e) => simulationDelay = parseInt(e.target.value, 10));
+
+        function resizeCanvases() {
+            for (const key in canvases) {
+                const canvas = canvases[key];
+                const container = canvas.parentElement;
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+            }
+            if (!convAnimateCheck.checked && !noiseCheck.checked) runFullSimulation();
+        }
+        window.addEventListener('resize', resizeCanvases);
+        window.onload = () => { resizeCanvases(); runFullSimulation(); };
+
+    </script>
+</body>
+</html>
